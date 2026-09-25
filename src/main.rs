@@ -116,6 +116,8 @@ fn parse_cli_args() -> Result<CliArgs, String> {
 fn print_help() {
     println!("macOS Task Cleaner (mtc) v{}", VERSION);
     println!("轻量级前台任务清场工具 (面向 macOS 的免弹窗、多级白名单任务清理引擎)");
+    println!("Copyright (c) 2026 DonJone. All rights reserved.");
+    println!("License: GNU AGPLv3 / Commercial Dual License. (See COMMERCIAL.md & TRADEMARK.md)");
     println!();
     println!("用法:");
     println!("  mtc [选项]   (或 taskcleaner [选项])");
@@ -134,7 +136,7 @@ fn print_help() {
     println!("      --init-config         在 ~/.config/mtc/config.toml 生成默认配置模板");
     println!("      --json                以结构化 JSON 格式输出结果 (适配 Raycast / 脚本接入)");
     println!("  -h, --help                显示帮助说明");
-    println!("  -v, --version             显示当前版本");
+    println!("  -v, --version             显示当前版本与许可信息");
     println!();
     println!("白名单分级体系:");
     println!("  L1: 系统核心层 (Finder, Dock, WindowServer)");
@@ -159,7 +161,11 @@ fn main() {
     }
 
     if cli.show_version {
-        println!("mtc (taskcleaner) v{}", VERSION);
+        println!("macOS Task Cleaner CLI (mtc / taskcleaner) v{}", VERSION);
+        println!("Copyright (c) 2026 DonJone. All rights reserved.");
+        println!("License: GNU Affero General Public License v3.0 (AGPLv3) / Commercial Dual License.");
+        println!("Policy: See COMMERCIAL.md for commercial licensing and TRADEMARK.md for brand policy.");
+        println!("Homepage: https://github.com/DonJone/macos-task-cleaner-cli");
         return;
     }
 
