@@ -7,7 +7,9 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 
 use interactive::run_interactive_session;
-use macos_task_cleaner_core::{scan_foreground_apps, tiered_terminate, WhitelistManager};
+use macos_task_cleaner_core::{
+    scan_foreground_apps, tiered_terminate, AppTarget, WhitelistManager,
+};
 use preview::{render_dry_run_preview, render_execution_report};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -23,6 +25,7 @@ struct CliArgs {
     cli_keeps: Vec<String>,
     add_whitelist: Vec<String>,
     remove_whitelist: Vec<String>,
+    terminate_pids: Vec<i32>,
     init_config: bool,
     show_help: bool,
     show_version: bool,
@@ -84,6 +87,17 @@ fn parse_cli_args() -> Result<CliArgs, String> {
                     return Err("缺少 --remove-whitelist 参数值".to_string());
                 }
             }
+            "-t" | "--terminate-pid" | "--kill-pid" => {
+                if let Some(val) = args.next() {
+                    if let Ok(pid) = val.parse::<i32>() {
+                        cli.terminate_pids.push(pid);
+                    } else {
+                        return Err(format!("无效的 PID: {}", val));
+                    }
+                } else {
+                    return Err("缺少 --terminate-pid 参数值".to_string());
+                }
+            }
             "-h" | "--help" => {
                 cli.show_help = true;
             }
@@ -111,6 +125,7 @@ fn print_help() {
     println!("  -n, --dry-run             预检预览模式 (仅扫描并分析白名单过滤，不发送任何终止信号)");
     println!("  -e, --execute             执行实质清场动作 (执行 SIGTERM -> 轮询 -> SIGKILL 三段式下线)");
     println!("  -f, --force               强制直接秒杀 (跳过宽限期，直接发送 SIGKILL)");
+    println!("  -t, --terminate-pid <PID> 针对指定的单个或多个 PID 执行三段式终止下线");
     println!("  -a, --add-whitelist <ID>  向永久配置文件追加白名单规则 (支持名称或 Bundle ID，如: -a 微信)");
     println!("  -r, --remove-whitelist <ID> 从白名单移除规则并记录至禁用列表 (支持内置预设与用户规则)");
     println!("  -k, --keep <NAME/BUNDLE>  命令行临时追加豁免白名单 (仅对当前进程生效，支持多次传入)");
@@ -206,6 +221,44 @@ fn main() {
     let (whitelist, config) =
         WhitelistManager::new(cli.config_path.as_deref(), &cli.cli_keeps);
     let grace_period = Duration::from_millis(config.general.grace_period_ms);
+
+    // 3.5 处理指定 PID 单独终止 (-t / --terminate-pid)
+    if !cli.terminate_pids.is_empty() {
+        let all_apps = scan_foreground_apps();
+        let mut targets_to_kill = Vec::new();
+        for &pid in &cli.terminate_pids {
+            if let Some(app) = all_apps.iter().find(|a| a.pid == pid) {
+                targets_to_kill.push(app.clone());
+            } else {
+                targets_to_kill.push(AppTarget {
+                    pid,
+                    name: format!("PID:{}", pid),
+                    bundle_id: String::new(),
+                });
+            }
+        }
+        let report = tiered_terminate(&targets_to_kill, grace_period, cli.force);
+        if cli.json {
+            println!("{}", serde_json::to_string(&report).unwrap_or_default());
+        } else {
+            for rec in &report.records {
+                if rec.error_msg.is_none() {
+                    println!("[终止成功] 已结束应用: {} (PID: {})", rec.app.name, rec.app.pid);
+                } else {
+                    eprintln!(
+                        "[终止失败] 无法结束应用: {} (PID: {}): {}",
+                        rec.app.name,
+                        rec.app.pid,
+                        rec.error_msg.as_deref().unwrap_or("未知原因")
+                    );
+                }
+            }
+        }
+        if report.failed > 0 {
+            std::process::exit(1);
+        }
+        return;
+    }
 
     // 4. 交互式模式 (-i / --interactive)
     if cli.interactive {
