@@ -1,0 +1,19 @@
+[package]
+name = "macos-task-cleaner-cli"
+version = "0.1.0"
+edition = "2024"
+description = "Command-line interface (mtc) for macOS Task Cleaner"
+license = "MIT"
+repository = "https://github.com/DonJone/macos-task-cleaner-cli"
+
+[[bin]]
+name = "mtc"
+path = "src/main.rs"
+
+[dependencies]
+macos-task-cleaner-core = { git = "https://github.com/DonJone/macos-task-cleaner-core", branch = "main" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[patch."https://github.com/DonJone/macos-task-cleaner-core"]
+macos-task-cleaner-core = { path = "../macos-task-cleaner-core" }
