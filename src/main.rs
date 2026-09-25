@@ -22,6 +22,7 @@ struct CliArgs {
     config_path: Option<PathBuf>,
     cli_keeps: Vec<String>,
     add_whitelist: Vec<String>,
+    remove_whitelist: Vec<String>,
     init_config: bool,
     show_help: bool,
     show_version: bool,
@@ -76,6 +77,13 @@ fn parse_cli_args() -> Result<CliArgs, String> {
                     return Err("缺少 --add-whitelist 参数值".to_string());
                 }
             }
+            "-r" | "--remove-whitelist" | "--unprotect" => {
+                if let Some(val) = args.next() {
+                    cli.remove_whitelist.push(val);
+                } else {
+                    return Err("缺少 --remove-whitelist 参数值".to_string());
+                }
+            }
             "-h" | "--help" => {
                 cli.show_help = true;
             }
@@ -99,11 +107,12 @@ fn print_help() {
     println!("  mtc [选项]   (或 taskcleaner [选项])");
     println!();
     println!("核心选项:");
-    println!("  -i, --interactive         交互式清场向导 (推荐: 支持序号选择、一键添加白名单与确认清场)");
+    println!("  -i, --interactive         交互式清场向导 (推荐: 支持序号选择、添加/移除白名单与确认清场)");
     println!("  -n, --dry-run             预检预览模式 (仅扫描并分析白名单过滤，不发送任何终止信号)");
     println!("  -e, --execute             执行实质清场动作 (执行 SIGTERM -> 轮询 -> SIGKILL 三段式下线)");
     println!("  -f, --force               强制直接秒杀 (跳过宽限期，直接发送 SIGKILL)");
     println!("  -a, --add-whitelist <ID>  向永久配置文件追加白名单规则 (支持名称或 Bundle ID，如: -a 微信)");
+    println!("  -r, --remove-whitelist <ID> 从白名单移除规则并记录至禁用列表 (支持内置预设与用户规则)");
     println!("  -k, --keep <NAME/BUNDLE>  命令行临时追加豁免白名单 (仅对当前进程生效，支持多次传入)");
     println!("  -p, --purge               清场完成后调用 /usr/sbin/purge 强制回收内存缓存");
     println!("  -c, --config <FILE>       指定自定义 TOML 配置文件路径");
@@ -166,6 +175,26 @@ fn main() {
                 }
                 Err(e) => {
                     eprintln!("[白名单写入失败] 添加 '{}' 失败: {}", ident, e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        return;
+    }
+
+    // 2.5 处理移除白名单 (-r / --remove-whitelist)
+    if !cli.remove_whitelist.is_empty() {
+        for ident in &cli.remove_whitelist {
+            match WhitelistManager::remove_identifier_from_config(cli.config_path.as_deref(), ident) {
+                Ok((saved_path, is_modified)) => {
+                    if is_modified {
+                        println!("[白名单移除成功] 已将 '{}' 从白名单移除/记录至禁用列表: {}", ident, saved_path.display());
+                    } else {
+                        println!("[白名单状态未变] '{}' 未在白名单中或已处于禁用状态: {}", ident, saved_path.display());
+                    }
+                }
+                Err(e) => {
+                    eprintln!("[白名单移除失败] 移除 '{}' 失败: {}", ident, e);
                     std::process::exit(1);
                 }
             }

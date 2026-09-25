@@ -69,7 +69,7 @@ pub fn run_interactive_session(
             let trimmed = input.trim().to_lowercase();
             match trimmed.as_str() {
                 "p" | "protected" => {
-                    print_protected_apps(&protected_list);
+                    handle_protected_apps(custom_config_path, &protected_list);
                 }
                 "r" | "refresh" => {
                     continue;
@@ -105,7 +105,7 @@ pub fn run_interactive_session(
         println!("  t [编号...]   在本轮清场中临时跳过/豁免 (例: t 1)");
         println!("  c / clean     确认执行平滑清场 (向剩余未豁免目标发送 SIGTERM -> SIGKILL)");
         println!("  f / force     立即强制秒杀 (跳过宽限期，直接发送 SIGKILL)");
-        println!("  p / protected 查看当前已被白名单保护的应用清单");
+        println!("  p / protected 查看并管理当前已被保护的应用清单 (可移出白名单)");
         println!("  r / refresh   重新扫描系统前台应用");
         println!("  q / quit      取消并安全退出");
         println!("------------------------------------------------------------");
@@ -135,8 +135,7 @@ pub fn run_interactive_session(
                 continue;
             }
             "p" | "protected" => {
-                print_protected_apps(&protected_list);
-                pause_prompt();
+                handle_protected_apps(custom_config_path, &protected_list);
                 continue;
             }
             "c" | "clean" => {
@@ -272,20 +271,66 @@ pub fn run_interactive_session(
     }
 }
 
-fn print_protected_apps(protected_list: &[(AppTarget, WhitelistMatch)]) {
+fn handle_protected_apps(
+    custom_config_path: Option<&Path>,
+    protected_list: &[(AppTarget, WhitelistMatch)],
+) {
     println!();
     println!("------------------------------------------------------------");
     println!("[当前受保护应用清单]");
     println!("------------------------------------------------------------");
-    println!("{:<7} {:<18} {:<12} {}", "PID", "应用名称", "保护层级", "豁免规则");
-    println!("{:-<7} {:-<18} {:-<12} {:-<20}", "", "", "", "");
-    for (app, matched) in protected_list {
+    println!("序号  {:<7} {:<18} {:<12} {}", "PID", "应用名称", "保护层级", "豁免规则");
+    println!("{:-<4} {:-<7} {:-<18} {:-<12} {:-<20}", "", "", "", "", "");
+    for (idx, (app, matched)) in protected_list.iter().enumerate() {
         println!(
-            "{:<7} {:<18} {:<12} {}",
-            app.pid, app.name, matched.tier_label, matched.matched_rule
+            "[{:>2}] {:<7} {:<18} {:<12} {}",
+            idx + 1,
+            app.pid,
+            app.name,
+            matched.tier_label,
+            matched.matched_rule
         );
     }
     println!("------------------------------------------------------------");
+    println!("操作指令:");
+    println!("  u [序号...]   将指定应用移出白名单并加入禁用规则 (例: u 1 或 u 1, 2)");
+    println!("  按回车键直接返回主菜单");
+    print!("请输入操作指令 > ");
+    let _ = io::stdout().flush();
+
+    let mut input = String::new();
+    if io::stdin().read_line(&mut input).is_ok() {
+        let trimmed = input.trim();
+        let parts: Vec<&str> = trimmed.split_whitespace().collect();
+        if !parts.is_empty() && (parts[0].eq_ignore_ascii_case("u") || parts[0].eq_ignore_ascii_case("rm")) {
+            let indices = parse_indices(&parts[1..], protected_list.len());
+            if indices.is_empty() {
+                println!("[提示] 未指定有效序号。");
+            } else {
+                for idx in indices {
+                    let (app, _) = &protected_list[idx];
+                    let ident = if !app.bundle_id.is_empty() {
+                        &app.bundle_id
+                    } else {
+                        &app.name
+                    };
+                    match WhitelistManager::remove_identifier_from_config(custom_config_path, ident) {
+                        Ok((path, _)) => {
+                            println!(
+                                "[移除成功] 已将 '{}' 移出白名单并记录至禁用列表: {}",
+                                app.name,
+                                path.display()
+                            );
+                        }
+                        Err(e) => {
+                            eprintln!("[移除失败] 移除 '{}' 失败: {}", app.name, e);
+                        }
+                    }
+                }
+            }
+            pause_prompt();
+        }
+    }
 }
 
 fn parse_indices(tokens: &[&str], max_len: usize) -> Vec<usize> {
