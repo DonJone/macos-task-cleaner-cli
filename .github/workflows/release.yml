@@ -43,25 +43,44 @@ jobs:
         with:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
-      - name: Compile Universal Mach-O Binary
+      - name: Compile Multi-Architecture Mach-O Binaries
         working-directory: macos-task-cleaner-cli
         run: |
           cargo build --release --target aarch64-apple-darwin
           cargo build --release --target x86_64-apple-darwin
-          mkdir -p dist
+          mkdir -p dist/arm64 dist/x86_64 dist/universal
+          cp target/aarch64-apple-darwin/release/mtc dist/arm64/mtc
+          cp target/x86_64-apple-darwin/release/mtc dist/x86_64/mtc
           lipo -create \
             target/aarch64-apple-darwin/release/mtc \
             target/x86_64-apple-darwin/release/mtc \
-            -output dist/mtc
-          chmod +x dist/mtc
-          file dist/mtc
+            -output dist/universal/mtc
+          chmod +x dist/arm64/mtc dist/x86_64/mtc dist/universal/mtc
+          echo "[架构检验 - Apple Silicon arm64]"
+          file dist/arm64/mtc
+          echo "[架构检验 - AMD64 / Intel x86_64]"
+          file dist/x86_64/mtc
+          echo "[架构检验 - 通用架构 Universal]"
+          file dist/universal/mtc
 
-      - name: Package Distribution Tarball
+      - name: Package Distribution Tarballs
         working-directory: macos-task-cleaner-cli
         run: |
-          tar -czvf mtc-macos-universal.tar.gz -C dist mtc
+          # 1. Apple Silicon (arm64)
+          tar -czvf mtc-macos-arm64.tar.gz -C dist/arm64 mtc
+          shasum -a 256 mtc-macos-arm64.tar.gz > mtc-macos-arm64.tar.gz.sha256
+
+          # 2. AMD64 / Intel (x86_64)
+          tar -czvf mtc-macos-x86_64.tar.gz -C dist/x86_64 mtc
+          shasum -a 256 mtc-macos-x86_64.tar.gz > mtc-macos-x86_64.tar.gz.sha256
+
+          # 3. Universal (arm64 + x86_64)
+          tar -czvf mtc-macos-universal.tar.gz -C dist/universal mtc
           shasum -a 256 mtc-macos-universal.tar.gz > mtc-macos-universal.tar.gz.sha256
-          echo "SHA256 Checksum:"
+
+          echo "=== SHA256 校验码列表 ==="
+          cat mtc-macos-arm64.tar.gz.sha256
+          cat mtc-macos-x86_64.tar.gz.sha256
           cat mtc-macos-universal.tar.gz.sha256
 
       - name: Compute Release Metadata
@@ -96,7 +115,19 @@ jobs:
           draft: false
           prerelease: ${{ steps.meta.outputs.prerelease == 'true' }}
           generate_release_notes: true
+          body: |
+            ### 架构与下载说明 / Architecture & Downloads
+
+            | 架构 / Architecture | 适用设备 / Applicable Devices | 对应安装包 / Asset |
+            | :--- | :--- | :--- |
+            | **Apple Silicon** (`arm64`) | Apple M1 / M2 / M3 / M4 系列芯片 Mac | `mtc-macos-arm64.tar.gz` |
+            | **AMD64 / Intel** (`x86_64`) | Intel 处理器 / AMD64 架构 Mac | `mtc-macos-x86_64.tar.gz` |
+            | **Universal** (通用架构) | 兼容所有 Apple Silicon 及 Intel Mac | `mtc-macos-universal.tar.gz` |
           files: |
+            macos-task-cleaner-cli/mtc-macos-arm64.tar.gz
+            macos-task-cleaner-cli/mtc-macos-arm64.tar.gz.sha256
+            macos-task-cleaner-cli/mtc-macos-x86_64.tar.gz
+            macos-task-cleaner-cli/mtc-macos-x86_64.tar.gz.sha256
             macos-task-cleaner-cli/mtc-macos-universal.tar.gz
             macos-task-cleaner-cli/mtc-macos-universal.tar.gz.sha256
         env:
