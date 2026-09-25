@@ -4,15 +4,25 @@
   <a href="README.md">English</a> | <a href="README_ZH.md">简体中文</a>
 </p>
 
+<p align="left">
+  <a href="https://apple.com/macos"><img src="https://img.shields.io/badge/平台-macOS-000000?logo=apple&logoColor=white" alt="平台: macOS" /></a>
+  <img src="https://img.shields.io/badge/架构-Apple%20Silicon%20%7C%20AMD64-blue" alt="架构: Apple Silicon | AMD64" />
+  <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/语言-Rust-dea584?logo=rust&logoColor=white" alt="语言: Rust" /></a>
+  <img src="https://img.shields.io/badge/Rust-1.75%2B-orange?logo=rust&logoColor=white" alt="Rust: 1.75+" />
+  <img src="https://img.shields.io/badge/二进制格式-Universal%20Mach--O-purple" alt="格式: Universal Mach-O" />
+  <a href="https://github.com/DonJone/macos-task-cleaner-cli/releases"><img src="https://img.shields.io/github/v/release/DonJone/macos-task-cleaner-cli?label=发布版本&color=blue" alt="发布版本" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/协议-MIT-green" alt="协议: MIT" /></a>
+</p>
+
 面向 macOS 的轻量级、工程级前台任务清场命令行工具。基于底层高性能核心引擎 [macos-task-cleaner-core](https://github.com/DonJone/macos-task-cleaner-core) 构建。
 
 ---
 
 ## 界面效果展示
 
-| 终端交互式向导 (`mtc -i`) | 状态栏常驻客户端 (`TaskCleaner.app`) |
-| :---: | :---: |
-| <img src="docs/images/cli-interactive.png" width="480" alt="macOS Task Cleaner 交互式终端向导" /> | <img src="docs/images/gui-menubar.png" width="340" alt="macOS Task Cleaner 菜单栏界面" /> |
+<p align="center">
+  <img src="docs/images/cli-interactive.png" width="720" alt="macOS Task Cleaner 交互式终端向导" />
+</p>
 
 ---
 
@@ -27,7 +37,26 @@
 
 ---
 
-## 安装
+## 安装与下载
+
+### 1. 预编译独立二进制包下载
+
+前往 [GitHub Releases](https://github.com/DonJone/macos-task-cleaner-cli/releases/latest) 直接获取适用于您当前 Mac 架构的压缩包：
+
+| 硬件架构 | 适用设备 | 安装包直链下载 |
+| :--- | :--- | :--- |
+| **Apple Silicon** (`arm64`) | Apple M1 / M2 / M3 / M4 芯片 Mac | [mtc-macos-arm64.tar.gz](https://github.com/DonJone/macos-task-cleaner-cli/releases/latest/download/mtc-macos-arm64.tar.gz) |
+| **AMD64 / Intel** (`x86_64`) | Intel 处理器 / AMD64 架构 Mac | [mtc-macos-x86_64.tar.gz](https://github.com/DonJone/macos-task-cleaner-cli/releases/latest/download/mtc-macos-x86_64.tar.gz) |
+| **Universal** (`universal`) | 兼容全部 Apple Silicon 及 Intel Mac | [mtc-macos-universal.tar.gz](https://github.com/DonJone/macos-task-cleaner-cli/releases/latest/download/mtc-macos-universal.tar.gz) |
+
+解压后放置于 PATH 环境变量目录下即可使用：
+
+```bash
+tar -xzvf mtc-macos-arm64.tar.gz
+sudo mv mtc /usr/local/bin/   # 或 ~/.local/bin/
+```
+
+### 2. 源码本地编译
 
 要求已安装 Rust 工具链（1.75+）：
 

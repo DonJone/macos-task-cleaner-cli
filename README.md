@@ -4,15 +4,25 @@
   <a href="README.md">English</a> | <a href="README_ZH.md">简体中文</a>
 </p>
 
+<p align="left">
+  <a href="https://apple.com/macos"><img src="https://img.shields.io/badge/Platform-macOS-000000?logo=apple&logoColor=white" alt="Platform: macOS" /></a>
+  <img src="https://img.shields.io/badge/Architecture-Apple%20Silicon%20%7C%20AMD64-blue" alt="Architecture: Apple Silicon | AMD64" />
+  <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Language-Rust-dea584?logo=rust&logoColor=white" alt="Language: Rust" /></a>
+  <img src="https://img.shields.io/badge/Rust-1.75%2B-orange?logo=rust&logoColor=white" alt="Rust: 1.75+" />
+  <img src="https://img.shields.io/badge/Binary-Universal%20Mach--O-purple" alt="Binary: Universal Mach-O" />
+  <a href="https://github.com/DonJone/macos-task-cleaner-cli/releases"><img src="https://img.shields.io/github/v/release/DonJone/macos-task-cleaner-cli?label=Release&color=blue" alt="Release" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green" alt="License: MIT" /></a>
+</p>
+
 A lightweight, production-grade foreground task cleaner and process management CLI for macOS. Built on top of the high-precision [macos-task-cleaner-core](https://github.com/DonJone/macos-task-cleaner-core) engine.
 
 ---
 
 ## Interface Showcase
 
-| Interactive CLI Wizard (`mtc -i`) | Menu Bar GUI Companion (`TaskCleaner.app`) |
-| :---: | :---: |
-| <img src="docs/images/cli-interactive.png" width="480" alt="macOS Task Cleaner Interactive CLI" /> | <img src="docs/images/gui-menubar.png" width="340" alt="macOS Task Cleaner Menu Bar Interface" /> |
+<p align="center">
+  <img src="docs/images/cli-interactive.png" width="720" alt="macOS Task Cleaner Interactive CLI Wizard" />
+</p>
 
 ---
 
@@ -27,6 +37,25 @@ A lightweight, production-grade foreground task cleaner and process management C
 ---
 
 ## Installation
+
+### 1. Pre-Built Standalone Binaries
+
+Download the pre-compiled binary package directly from [GitHub Releases](https://github.com/DonJone/macos-task-cleaner-cli/releases/latest):
+
+| Architecture | Applicable Hardware | Direct Download Link |
+| :--- | :--- | :--- |
+| **Apple Silicon** (`arm64`) | Apple M1 / M2 / M3 / M4 Macs | [mtc-macos-arm64.tar.gz](https://github.com/DonJone/macos-task-cleaner-cli/releases/latest/download/mtc-macos-arm64.tar.gz) |
+| **AMD64 / Intel** (`x86_64`) | Intel-based Macs | [mtc-macos-x86_64.tar.gz](https://github.com/DonJone/macos-task-cleaner-cli/releases/latest/download/mtc-macos-x86_64.tar.gz) |
+| **Universal** (`universal`) | Compatible with all Macs | [mtc-macos-universal.tar.gz](https://github.com/DonJone/macos-task-cleaner-cli/releases/latest/download/mtc-macos-universal.tar.gz) |
+
+Extract and place into your PATH:
+
+```bash
+tar -xzvf mtc-macos-arm64.tar.gz
+sudo mv mtc /usr/local/bin/   # or ~/.local/bin/
+```
+
+### 2. Build from Source
 
 Requires Rust toolchain (1.75+):
 
