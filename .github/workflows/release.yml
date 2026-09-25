@@ -1,0 +1,103 @@
+name: Automated Release
+
+on:
+  schedule:
+    # 每周日 UTC 02:00 (北京时间 10:00) 定时自动打包 Release
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '发布版本标签 (如 v0.1.0，留空则自动按日期生成)'
+        required: false
+        default: ''
+      prerelease:
+        description: '是否标记为预发布 (Pre-release)'
+        type: boolean
+        default: false
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Release Universal mtc CLI
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout CLI Repository
+        uses: actions/checkout@v4
+        with:
+          path: macos-task-cleaner-cli
+
+      - name: Checkout Core Repository
+        uses: actions/checkout@v4
+        with:
+          repository: DonJone/macos-task-cleaner-core
+          path: macos-task-cleaner-core
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Compile Universal Mach-O Binary
+        working-directory: macos-task-cleaner-cli
+        run: |
+          cargo build --release --target aarch64-apple-darwin
+          cargo build --release --target x86_64-apple-darwin
+          mkdir -p dist
+          lipo -create \
+            target/aarch64-apple-darwin/release/mtc \
+            target/x86_64-apple-darwin/release/mtc \
+            -output dist/mtc
+          chmod +x dist/mtc
+          file dist/mtc
+
+      - name: Package Distribution Tarball
+        working-directory: macos-task-cleaner-cli
+        run: |
+          tar -czvf mtc-macos-universal.tar.gz -C dist mtc
+          shasum -a 256 mtc-macos-universal.tar.gz > mtc-macos-universal.tar.gz.sha256
+          echo "SHA256 Checksum:"
+          cat mtc-macos-universal.tar.gz.sha256
+
+      - name: Compute Release Metadata
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            TAG_NAME="release-$(date +'%Y.%m.%d')"
+            RELEASE_TITLE="mtc CLI Scheduled Release $(date +'%Y.%m.%d')"
+            IS_PRE="false"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ -n "${{ github.event.inputs.tag }}" ]; then
+              TAG_NAME="${{ github.event.inputs.tag }}"
+            else
+              TAG_NAME="release-$(date +'%Y.%m.%d')"
+            fi
+            RELEASE_TITLE="mtc CLI Release ${TAG_NAME}"
+            IS_PRE="${{ github.event.inputs.prerelease }}"
+          else
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+            RELEASE_TITLE="mtc CLI ${TAG_NAME}"
+            IS_PRE="false"
+          fi
+          echo "tag=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "title=${RELEASE_TITLE}" >> $GITHUB_OUTPUT
+          echo "prerelease=${IS_PRE}" >> $GITHUB_OUTPUT
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.title }}
+          draft: false
+          prerelease: ${{ steps.meta.outputs.prerelease == 'true' }}
+          generate_release_notes: true
+          files: |
+            macos-task-cleaner-cli/mtc-macos-universal.tar.gz
+            macos-task-cleaner-cli/mtc-macos-universal.tar.gz.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
