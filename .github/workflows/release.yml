@@ -118,11 +118,11 @@ jobs:
           body: |
             ### 架构与下载说明 / Architecture & Downloads
 
-            | 架构 / Architecture | 适用设备 / Applicable Devices | 对应安装包 / Asset |
+            | 架构 / Architecture | 适用设备 / Applicable Devices | 安装包直链下载 / Download Archive |
             | :--- | :--- | :--- |
-            | **Apple Silicon** (`arm64`) | Apple M1 / M2 / M3 / M4 系列芯片 Mac | `mtc-macos-arm64.tar.gz` |
-            | **AMD64 / Intel** (`x86_64`) | Intel 处理器 / AMD64 架构 Mac | `mtc-macos-x86_64.tar.gz` |
-            | **Universal** (通用架构) | 兼容所有 Apple Silicon 及 Intel Mac | `mtc-macos-universal.tar.gz` |
+            | **Apple Silicon** (`arm64`) | Apple M1 / M2 / M3 / M4 系列芯片 Mac | [mtc-macos-arm64.tar.gz](https://github.com/DonJone/macos-task-cleaner-cli/releases/download/${{ steps.meta.outputs.tag }}/mtc-macos-arm64.tar.gz) |
+            | **AMD64 / Intel** (`x86_64`) | Intel 处理器 / AMD64 架构 Mac | [mtc-macos-x86_64.tar.gz](https://github.com/DonJone/macos-task-cleaner-cli/releases/download/${{ steps.meta.outputs.tag }}/mtc-macos-x86_64.tar.gz) |
+            | **Universal** (通用架构) | 兼容所有 Apple Silicon 及 Intel Mac | [mtc-macos-universal.tar.gz](https://github.com/DonJone/macos-task-cleaner-cli/releases/download/${{ steps.meta.outputs.tag }}/mtc-macos-universal.tar.gz) |
           files: |
             macos-task-cleaner-cli/mtc-macos-arm64.tar.gz
             macos-task-cleaner-cli/mtc-macos-arm64.tar.gz.sha256
