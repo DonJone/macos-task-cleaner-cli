@@ -807,4 +807,116 @@ Whitelist Defense Matrix:
             _ => "\n[Memory Purge] Running /usr/sbin/purge...",
         }
     }
+
+    /// 解析 macOS 原生系统应用在指定语言下的标准显示名称
+    pub fn resolve_app_name(bundle_id: &str, fallback: &str, lang: Language) -> String {
+        match bundle_id {
+            "com.apple.MobileSMS" => match lang {
+                Language::ZhHans => "信息".to_string(),
+                Language::ZhHant => "訊息".to_string(),
+                Language::Ja => "メッセージ".to_string(),
+                _ => "Messages".to_string(),
+            },
+            "com.apple.Preview" => match lang {
+                Language::ZhHans => "预览".to_string(),
+                Language::ZhHant => "預覽程式".to_string(),
+                Language::Ja => "プレビュー".to_string(),
+                _ => "Preview".to_string(),
+            },
+            "com.apple.Music" => match lang {
+                Language::ZhHans => "音乐".to_string(),
+                Language::ZhHant => "音樂".to_string(),
+                Language::Ja => "ミュージック".to_string(),
+                _ => "Music".to_string(),
+            },
+            "com.apple.mail" => match lang {
+                Language::ZhHans => "邮件".to_string(),
+                Language::ZhHant => "郵件".to_string(),
+                Language::Ja => "メール".to_string(),
+                _ => "Mail".to_string(),
+            },
+            "com.apple.Maps" => match lang {
+                Language::ZhHans => "地图".to_string(),
+                Language::ZhHant => "地圖".to_string(),
+                Language::Ja => "マップ".to_string(),
+                _ => "Maps".to_string(),
+            },
+            "com.apple.FaceTime" => match lang {
+                Language::ZhHans => "FaceTime 通话".to_string(),
+                Language::ZhHant => "FaceTime 通話".to_string(),
+                _ => "FaceTime".to_string(),
+            },
+            "com.apple.iCal" => match lang {
+                Language::ZhHans => "日历".to_string(),
+                Language::ZhHant => "行事曆".to_string(),
+                Language::Ja => "カレンダー".to_string(),
+                _ => "Calendar".to_string(),
+            },
+            "com.apple.Photos" => match lang {
+                Language::ZhHans => "照片".to_string(),
+                Language::ZhHant => "照片".to_string(),
+                Language::Ja => "写真".to_string(),
+                _ => "Photos".to_string(),
+            },
+            "com.apple.Notes" => match lang {
+                Language::ZhHans => "备忘录".to_string(),
+                Language::ZhHant => "備忘錄".to_string(),
+                Language::Ja => "メモ".to_string(),
+                _ => "Notes".to_string(),
+            },
+            "com.apple.Reminders" | "com.apple.reminders" => match lang {
+                Language::ZhHans => "提醒事项".to_string(),
+                Language::ZhHant => "提醒事項".to_string(),
+                Language::Ja => "リマインダー".to_string(),
+                _ => "Reminders".to_string(),
+            },
+            "com.apple.calculator" => match lang {
+                Language::ZhHans => "计算器".to_string(),
+                Language::ZhHant => "計算機".to_string(),
+                Language::Ja => "計算機".to_string(),
+                _ => "Calculator".to_string(),
+            },
+            "com.apple.TextEdit" => match lang {
+                Language::ZhHans => "文本编辑".to_string(),
+                Language::ZhHant => "文字編輯".to_string(),
+                Language::Ja => "テキストエディット".to_string(),
+                _ => "TextEdit".to_string(),
+            },
+            "com.apple.clock" => match lang {
+                Language::ZhHans => "时钟".to_string(),
+                Language::ZhHant => "時鐘".to_string(),
+                Language::Ja => "時計".to_string(),
+                _ => "Clock".to_string(),
+            },
+            "com.apple.shortcuts" => match lang {
+                Language::ZhHans => "快捷指令".to_string(),
+                Language::ZhHant => "捷徑".to_string(),
+                Language::Ja => "ショートカット".to_string(),
+                _ => "Shortcuts".to_string(),
+            },
+            "com.apple.weather" => match lang {
+                Language::ZhHans => "天气".to_string(),
+                Language::ZhHant => "天氣".to_string(),
+                Language::Ja => "天気".to_string(),
+                _ => "Weather".to_string(),
+            },
+            "com.apple.Terminal" => match lang {
+                Language::ZhHans => "终端".to_string(),
+                Language::ZhHant => "終端機".to_string(),
+                Language::Ja => "ターミナル".to_string(),
+                _ => "Terminal".to_string(),
+            },
+            "com.apple.Safari" => match lang {
+                Language::ZhHans => "Safari 浏览器".to_string(),
+                Language::ZhHant => "Safari 瀏覽器".to_string(),
+                _ => "Safari".to_string(),
+            },
+            "com.apple.finder" => match lang {
+                Language::ZhHans => "访达".to_string(),
+                Language::ZhHant => "訪達".to_string(),
+                _ => "Finder".to_string(),
+            },
+            _ => fallback.to_string(),
+        }
+    }
 }

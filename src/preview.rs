@@ -53,9 +53,10 @@ pub fn render_dry_run_preview(
 
     let mut protected_entries = Vec::new();
     for (app, matched) in protected {
+        let display_name = CliMessages::resolve_app_name(&app.bundle_id, &app.name, lang);
         protected_entries.push(ProtectedAppEntry {
             pid: app.pid,
-            name: app.name.clone(),
+            name: display_name,
             bundle_id: app.bundle_id.clone(),
             tier: matched.tier_label.clone(),
             tier_id: matched.tier_id.clone(),
@@ -66,9 +67,10 @@ pub fn render_dry_run_preview(
     let mut target_entries = Vec::new();
     for app in targets {
         let alive = is_process_alive(app.pid);
+        let display_name = CliMessages::resolve_app_name(&app.bundle_id, &app.name, lang);
         target_entries.push(TargetAppEntry {
             pid: app.pid,
-            name: app.name.clone(),
+            name: display_name,
             bundle_id: app.bundle_id.clone(),
             is_alive: alive,
         });
@@ -175,10 +177,11 @@ pub fn render_execution_report(report: &TerminationReport, as_json: bool, lang: 
         println!("{:<7} {:<20} {:<18} {}", c1, c2, c3, c4);
         println!("{:-<7} {:-<20} {:-<18} {:-<8}", "", "", "", "");
         for rec in &report.records {
+            let display_name = CliMessages::resolve_app_name(&rec.app.bundle_id, &rec.app.name, lang);
             println!(
                 "{:<7} {:<20} {:<18} {}",
                 rec.app.pid,
-                rec.app.name,
+                display_name,
                 rec.status,
                 rec.exit_signal.as_deref().unwrap_or("-")
             );
