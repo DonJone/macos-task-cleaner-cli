@@ -2,9 +2,11 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::time::Duration;
 
+use crate::i18n::CliMessages;
 use crate::preview::render_execution_report;
 use macos_task_cleaner_core::{
-    scan_foreground_apps, tiered_terminate, AppTarget, WhitelistManager, WhitelistMatch,
+    scan_foreground_apps, tiered_terminate_with_lang, AppTarget, Language, WhitelistManager,
+    WhitelistMatch,
 };
 
 /// 启动交互式任务向导会话 (-i / --interactive)
@@ -13,6 +15,7 @@ pub fn run_interactive_session(
     cli_keeps: &[String],
     grace_period: Duration,
     do_purge: bool,
+    lang: Language,
 ) {
     let mut in_memory_keeps = cli_keeps.to_vec();
 
@@ -27,7 +30,7 @@ pub fn run_interactive_session(
         let mut target_list: Vec<AppTarget> = Vec::new();
 
         for app in &all_apps {
-            if let Some(matched) = whitelist.check_protection(app) {
+            if let Some(matched) = whitelist.check_protection_with_lang(app, lang) {
                 protected_list.push((app.clone(), matched));
             } else {
                 target_list.push(app.clone());
@@ -36,30 +39,25 @@ pub fn run_interactive_session(
 
         println!();
         println!("============================================================");
-        println!("              macOS Task Cleaner - 交互式任务向导           ");
+        println!("{}", CliMessages::interactive_title(lang));
         println!("============================================================");
         println!(
-            "[状态概览] 前台应用总计: {} 个 | 白名单已豁免: {} 个 | 待处置目标: {} 个",
-            all_apps.len(),
-            protected_list.len(),
-            target_list.len()
+            "{}",
+            CliMessages::interactive_overview(all_apps.len(), protected_list.len(), target_list.len(), lang)
         );
         if let Some(ref p) = whitelist.loaded_config_path {
-            println!("[配置文件] {}", p.display());
+            println!("{}", CliMessages::interactive_config_file(&p.display().to_string(), lang));
         } else {
-            println!("[配置文件] 内置默认规则 (未检测到外部配置文件)");
+            println!("{}", CliMessages::interactive_config_default(lang));
         }
         println!();
 
         if target_list.is_empty() {
-            println!("[提示] 当前所有前台应用均已在白名单保护中，无待清理目标。");
+            println!("{}", CliMessages::interactive_all_protected(lang));
             println!("------------------------------------------------------------");
-            println!("操作指令:");
-            println!("  p / protected   查看当前已被保护的应用清单");
-            println!("  r / refresh     重新扫描系统前台应用");
-            println!("  q / quit        退出程序");
+            println!("{}", CliMessages::interactive_empty_menu(lang));
             println!("------------------------------------------------------------");
-            print!("请输入操作指令 > ");
+            print!("{}", CliMessages::interactive_prompt(lang));
             let _ = io::stdout().flush();
 
             let mut input = String::new();
@@ -69,25 +67,26 @@ pub fn run_interactive_session(
             let trimmed = input.trim().to_lowercase();
             match trimmed.as_str() {
                 "p" | "protected" => {
-                    handle_protected_apps(custom_config_path, &protected_list);
+                    handle_protected_apps(custom_config_path, &protected_list, lang);
                 }
                 "r" | "refresh" => {
                     continue;
                 }
                 "q" | "quit" | "exit" => {
-                    println!("[已退出] 未执行任何操作。");
+                    println!("{}", CliMessages::interactive_exited(lang));
                     break;
                 }
                 _ => {
-                    println!("[提示] 输入无效，请输入 p / r / q。");
+                    println!("{}", CliMessages::interactive_invalid_prompt(lang));
                 }
             }
             continue;
         }
 
         // 显示待清场目标清单 (带 1-indexed 编号)
-        println!("[待清场前台应用清单]:");
-        println!("序号  {:<7} {:<20} {}", "PID", "应用名称", "Bundle ID");
+        println!("{}", CliMessages::interactive_targets_header(lang));
+        let (c_no, c_pid, c_name, c_bid) = CliMessages::interactive_targets_cols(lang);
+        println!("{:<4} {:<7} {:<20} {}", c_no, c_pid, c_name, c_bid);
         println!("{:-<4} {:-<7} {:-<20} {:-<30}", "", "", "", "");
         for (idx, target) in target_list.iter().enumerate() {
             println!(
@@ -100,16 +99,9 @@ pub fn run_interactive_session(
         }
 
         println!("------------------------------------------------------------");
-        println!("操作指令指南:");
-        println!("  w [编号...]   将指定应用永久加入配置文件白名单 (例: w 1, 2 或 w 1 3)");
-        println!("  t [编号...]   在本轮清场中临时跳过/豁免 (例: t 1)");
-        println!("  c / clean     确认执行标准终止 (向目标发送 SIGTERM，超时升级为 SIGKILL)");
-        println!("  f / force     立即强制终止 (跳过宽限期，直接发送 SIGKILL)");
-        println!("  p / protected 查看并管理当前已被保护的应用清单 (可移出白名单)");
-        println!("  r / refresh   重新扫描系统前台应用");
-        println!("  q / quit      取消并安全退出");
+        println!("{}", CliMessages::interactive_guide(lang));
         println!("------------------------------------------------------------");
-        print!("请输入操作指令 > ");
+        print!("{}", CliMessages::interactive_prompt(lang));
         let _ = io::stdout().flush();
 
         let mut input = String::new();
@@ -127,50 +119,49 @@ pub fn run_interactive_session(
 
         match cmd.as_str() {
             "q" | "quit" | "exit" => {
-                println!("[已退出] 未执行任何清场操作。");
+                println!("{}", CliMessages::interactive_exited(lang));
                 break;
             }
             "r" | "refresh" => {
-                println!("[刷新] 正在重新扫描前台应用...");
+                println!("{}", CliMessages::interactive_refreshing(lang));
                 continue;
             }
             "p" | "protected" => {
-                handle_protected_apps(custom_config_path, &protected_list);
+                handle_protected_apps(custom_config_path, &protected_list, lang);
                 continue;
             }
             "c" | "clean" => {
-                if confirm_action(&format!("确认执行标准终止 (SIGTERM) 上述 {} 个应用?", target_list.len())) {
-                    println!("\n[开始执行标准终止]...");
-                    let report = tiered_terminate(&target_list, grace_period, false);
-                    render_execution_report(&report, false);
+                if confirm_action(&CliMessages::interactive_confirm_clean(target_list.len(), lang)) {
+                    println!("{}", CliMessages::interactive_starting_clean(lang));
+                    let report = tiered_terminate_with_lang(&target_list, grace_period, false, lang);
+                    render_execution_report(&report, false, lang);
 
                     if do_purge {
-                        execute_purge();
+                        execute_purge(lang);
                     }
                     break;
                 } else {
-                    println!("[操作已取消]");
+                    println!("{}", CliMessages::interactive_cancelled(lang));
                 }
             }
             "f" | "force" => {
-                if confirm_action(&format!("警告: 确认直接强制终止 (SIGKILL) 上述 {} 个应用?", target_list.len())) {
-                    println!("\n[开始执行强制终止]...");
-                    let report = tiered_terminate(&target_list, grace_period, true);
-                    render_execution_report(&report, false);
+                if confirm_action(&CliMessages::interactive_confirm_force(target_list.len(), lang)) {
+                    println!("{}", CliMessages::interactive_starting_force(lang));
+                    let report = tiered_terminate_with_lang(&target_list, grace_period, true, lang);
+                    render_execution_report(&report, false, lang);
 
                     if do_purge {
-                        execute_purge();
+                        execute_purge(lang);
                     }
                     break;
                 } else {
-                    println!("[操作已取消]");
+                    println!("{}", CliMessages::interactive_cancelled(lang));
                 }
             }
             "w" | "whitelist" => {
-                // 提取后续编号
                 let indices = parse_indices(&parts[1..], target_list.len());
                 if indices.is_empty() {
-                    println!("[提示] 请指定有效序号，例如: w 1 或 w 1, 2");
+                    println!("{}", CliMessages::interactive_invalid_indices(lang));
                     continue;
                 }
 
@@ -193,41 +184,43 @@ pub fn run_interactive_session(
                 ) {
                     Ok((saved_path, added_count)) => {
                         println!(
-                            "\n[配置更新成功] 已将 {} 个应用持久化写入白名单: {}",
-                            added_count,
-                            saved_path.display()
+                            "{}",
+                            CliMessages::interactive_config_saved(added_count, &saved_path.display().to_string(), lang)
                         );
                         for bid in &bundle_ids_to_add {
-                            println!("  * 包名: {}", bid);
+                            println!("  * Bundle ID: {}", bid);
                         }
                         for name in &names_to_add {
-                            println!("  * 名称: {}", name);
+                            println!("  * Name: {}", name);
                         }
                     }
                     Err(e) => {
-                        eprintln!("[写入配置文件失败] {}", e);
+                        eprintln!("{}", CliMessages::config_init_failed(&e.to_string(), lang));
                     }
                 }
-                pause_prompt();
+                pause_prompt(lang);
             }
             "t" | "temp" => {
                 let indices = parse_indices(&parts[1..], target_list.len());
                 if indices.is_empty() {
-                    println!("[提示] 请指定有效序号，例如: t 1 或 t 1, 2");
+                    println!("{}", CliMessages::interactive_invalid_indices(lang));
                     continue;
                 }
                 for idx in indices {
                     let target = &target_list[idx];
                     in_memory_keeps.push(target.bundle_id.clone());
-                    println!("[临时豁免] 本轮清场将跳过: {} ({})", target.name, target.bundle_id);
+                    println!(
+                        "{}",
+                        CliMessages::interactive_temp_skip(&target.name, &target.bundle_id, lang)
+                    );
                 }
-                pause_prompt();
+                pause_prompt(lang);
             }
             _ => {
                 // 检查用户是否直接输入了纯数字（如 "1" 或 "1, 2"），便捷默认等同于加入白名单
                 let indices = parse_indices(&parts[..], target_list.len());
                 if !indices.is_empty() {
-                    println!("[快捷选择] 检测到序号输入，将其加入永久白名单:");
+                    println!("{}", CliMessages::interactive_quick_select(lang));
                     let mut bundle_ids_to_add = Vec::new();
                     let mut names_to_add = Vec::new();
 
@@ -247,24 +240,23 @@ pub fn run_interactive_session(
                     ) {
                         Ok((saved_path, added_count)) => {
                             println!(
-                                "[配置更新成功] 已将 {} 个应用写入白名单: {}",
-                                added_count,
-                                saved_path.display()
+                                "{}",
+                                CliMessages::interactive_config_saved(added_count, &saved_path.display().to_string(), lang)
                             );
                             for bid in &bundle_ids_to_add {
-                                println!("  * 包名: {}", bid);
+                                println!("  * Bundle ID: {}", bid);
                             }
                             for name in &names_to_add {
-                                println!("  * 名称: {}", name);
+                                println!("  * Name: {}", name);
                             }
                         }
                         Err(e) => {
-                            eprintln!("[写入配置文件失败] {}", e);
+                            eprintln!("{}", CliMessages::config_init_failed(&e.to_string(), lang));
                         }
                     }
-                    pause_prompt();
+                    pause_prompt(lang);
                 } else {
-                    println!("[提示] 未知指令: '{}'。请输入 w / t / c / f / p / r / q", trimmed);
+                    println!("{}", CliMessages::interactive_unknown_cmd(trimmed, lang));
                 }
             }
         }
@@ -274,16 +266,18 @@ pub fn run_interactive_session(
 fn handle_protected_apps(
     custom_config_path: Option<&Path>,
     protected_list: &[(AppTarget, WhitelistMatch)],
+    lang: Language,
 ) {
     println!();
     println!("------------------------------------------------------------");
-    println!("[当前受保护应用清单]");
+    println!("{}", CliMessages::protected_view_title(lang));
     println!("------------------------------------------------------------");
-    println!("序号  {:<7} {:<18} {:<12} {}", "PID", "应用名称", "保护层级", "豁免规则");
-    println!("{:-<4} {:-<7} {:-<18} {:-<12} {:-<20}", "", "", "", "", "");
+    let (c_no, c_pid, c_name, c_tier, c_rule) = CliMessages::protected_view_cols(lang);
+    println!("{:<4} {:<7} {:<18} {:<16} {}", c_no, c_pid, c_name, c_tier, c_rule);
+    println!("{:-<4} {:-<7} {:-<18} {:-<16} {:-<20}", "", "", "", "", "");
     for (idx, (app, matched)) in protected_list.iter().enumerate() {
         println!(
-            "[{:>2}] {:<7} {:<18} {:<12} {}",
+            "[{:>2}] {:<7} {:<18} {:<16} {}",
             idx + 1,
             app.pid,
             app.name,
@@ -292,10 +286,8 @@ fn handle_protected_apps(
         );
     }
     println!("------------------------------------------------------------");
-    println!("操作指令:");
-    println!("  u [序号...]   将指定应用移出白名单并加入禁用规则 (例: u 1 或 u 1, 2)");
-    println!("  按回车键直接返回主菜单");
-    print!("请输入操作指令 > ");
+    println!("{}", CliMessages::protected_view_guide(lang));
+    print!("{}", CliMessages::interactive_prompt(lang));
     let _ = io::stdout().flush();
 
     let mut input = String::new();
@@ -305,7 +297,7 @@ fn handle_protected_apps(
         if !parts.is_empty() && (parts[0].eq_ignore_ascii_case("u") || parts[0].eq_ignore_ascii_case("rm")) {
             let indices = parse_indices(&parts[1..], protected_list.len());
             if indices.is_empty() {
-                println!("[提示] 未指定有效序号。");
+                println!("{}", CliMessages::interactive_invalid_indices(lang));
             } else {
                 for idx in indices {
                     let (app, _) = &protected_list[idx];
@@ -317,18 +309,24 @@ fn handle_protected_apps(
                     match WhitelistManager::remove_identifier_from_config(custom_config_path, ident) {
                         Ok((path, _)) => {
                             println!(
-                                "[移除成功] 已将 '{}' 移出白名单并记录至禁用列表: {}",
-                                app.name,
-                                path.display()
+                                "{}",
+                                CliMessages::whitelist_remove_success(
+                                    &app.name,
+                                    &path.display().to_string(),
+                                    lang
+                                )
                             );
                         }
                         Err(e) => {
-                            eprintln!("[移除失败] 移除 '{}' 失败: {}", app.name, e);
+                            eprintln!(
+                                "{}",
+                                CliMessages::whitelist_remove_failed(&app.name, &e.to_string(), lang)
+                            );
                         }
                     }
                 }
             }
-            pause_prompt();
+            pause_prompt(lang);
         }
     }
 }
@@ -364,17 +362,17 @@ fn confirm_action(prompt: &str) -> bool {
     }
 }
 
-fn pause_prompt() {
-    print!("\n按回车键继续...");
+fn pause_prompt(lang: Language) {
+    print!("{}", CliMessages::pause_prompt(lang));
     let _ = io::stdout().flush();
     let mut dummy = String::new();
     let _ = io::stdin().read_line(&mut dummy);
 }
 
-fn execute_purge() {
-    println!("\n[内存回收] 正在执行 /usr/sbin/purge...");
+fn execute_purge(lang: Language) {
+    println!("{}", CliMessages::purge_running(lang));
     match macos_task_cleaner_core::purge_system_cache() {
-        Ok(()) => println!("[内存回收完成] purge 缓存页面整理完成"),
-        Err(e) => eprintln!("[警告] 执行 /usr/sbin/purge 失败: {}", e),
+        Ok(()) => println!("{}", CliMessages::purge_success(lang)),
+        Err(e) => eprintln!("{}: {}", CliMessages::purge_warn(lang), e),
     }
 }

@@ -1,3 +1,4 @@
+mod i18n;
 mod interactive;
 mod preview;
 
@@ -5,15 +6,17 @@ use std::env;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
+use i18n::CliMessages;
 use interactive::run_interactive_session;
 use macos_task_cleaner_core::{
-    scan_foreground_apps, terminate_with_mode, AppTarget, TerminationMode, WhitelistManager,
+    scan_foreground_apps, terminate_with_mode_with_lang, AppTarget, Language, TerminationMode,
+    WhitelistManager,
 };
 use preview::{render_dry_run_preview, render_execution_report};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 struct CliArgs {
     dry_run: Option<bool>,
     force: bool,
@@ -21,6 +24,7 @@ struct CliArgs {
     purge: bool,
     json: bool,
     config_path: Option<PathBuf>,
+    lang: Option<Language>,
     cli_keeps: Vec<String>,
     add_whitelist: Vec<String>,
     remove_whitelist: Vec<String>,
@@ -30,9 +34,14 @@ struct CliArgs {
     show_version: bool,
 }
 
-fn parse_cli_args() -> Result<CliArgs, String> {
-    let mut args = env::args().skip(1);
+fn parse_cli_args_from<I, T>(args_iter: I) -> Result<CliArgs, String>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<String>,
+{
+    let mut args = args_iter.into_iter().map(Into::into).peekable();
     let mut cli = CliArgs::default();
+    let mut active_lang = Language::detect_system();
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -58,32 +67,41 @@ fn parse_cli_args() -> Result<CliArgs, String> {
             "--init-config" => {
                 cli.init_config = true;
             }
+            "-l" | "--lang" => {
+                if let Some(val) = args.next() {
+                    let parsed = Language::from_locale_str(&val);
+                    active_lang = parsed;
+                    cli.lang = Some(parsed);
+                } else {
+                    return Err(CliMessages::err_missing_value("--lang", active_lang));
+                }
+            }
             "-c" | "--config" => {
                 if let Some(val) = args.next() {
                     cli.config_path = Some(PathBuf::from(val));
                 } else {
-                    return Err("缺少 --config 参数值".to_string());
+                    return Err(CliMessages::err_missing_value("--config", active_lang));
                 }
             }
             "-k" | "--keep" => {
                 if let Some(val) = args.next() {
                     cli.cli_keeps.push(val);
                 } else {
-                    return Err("缺少 --keep 参数值".to_string());
+                    return Err(CliMessages::err_missing_value("--keep", active_lang));
                 }
             }
             "-a" | "--add-whitelist" => {
                 if let Some(val) = args.next() {
                     cli.add_whitelist.push(val);
                 } else {
-                    return Err("缺少 --add-whitelist 参数值".to_string());
+                    return Err(CliMessages::err_missing_value("--add-whitelist", active_lang));
                 }
             }
             "-r" | "--remove-whitelist" | "--unprotect" => {
                 if let Some(val) = args.next() {
                     cli.remove_whitelist.push(val);
                 } else {
-                    return Err("缺少 --remove-whitelist 参数值".to_string());
+                    return Err(CliMessages::err_missing_value("--remove-whitelist", active_lang));
                 }
             }
             "-t" | "--terminate-pid" | "--kill-pid" => {
@@ -91,10 +109,10 @@ fn parse_cli_args() -> Result<CliArgs, String> {
                     if let Ok(pid) = val.parse::<i32>() {
                         cli.terminate_pids.push(pid);
                     } else {
-                        return Err(format!("无效的 PID: {}", val));
+                        return Err(CliMessages::err_invalid_pid(&val, active_lang));
                     }
                 } else {
-                    return Err("缺少 --terminate-pid 参数值".to_string());
+                    return Err(CliMessages::err_missing_value("--terminate-pid", active_lang));
                 }
             }
             "-h" | "--help" => {
@@ -104,7 +122,7 @@ fn parse_cli_args() -> Result<CliArgs, String> {
                 cli.show_version = true;
             }
             unknown => {
-                return Err(format!("未知参数: {}", unknown));
+                return Err(CliMessages::err_unknown_arg(unknown, active_lang));
             }
         }
     }
@@ -112,59 +130,34 @@ fn parse_cli_args() -> Result<CliArgs, String> {
     Ok(cli)
 }
 
-fn print_help() {
-    println!("macOS Task Cleaner (mtc) v{}", VERSION);
-    println!("轻量级前台任务清场工具 (面向 macOS 的免弹窗、多级白名单任务清理引擎)");
-    println!("Copyright (c) 2026 DonJone. All rights reserved.");
-    println!("License: GNU AGPLv3 / Commercial Dual License. (See COMMERCIAL.md & TRADEMARK.md)");
-    println!();
-    println!("用法:");
-    println!("  mtc [选项]   (或 taskcleaner [选项])");
-    println!();
-    println!("核心选项:");
-    println!("  -i, --interactive         交互式清场向导 (推荐: 支持序号选择、添加/移除白名单与确认清场)");
-    println!("  -n, --dry-run             预检预览模式 (仅扫描并分析白名单过滤，不发送任何终止信号)");
-    println!("  -e, --execute             执行实质终止动作 (按序执行 SIGTERM -> 轮询 -> SIGKILL 梯次终止)");
-    println!("  -f, --force               强制直接终止 (跳过宽限期，直接发送 SIGKILL)");
-    println!("  -t, --terminate-pid <PID> 针对指定的单个或多个 PID 执行梯次终止");
-    println!("  -a, --add-whitelist <ID>  向永久配置文件追加白名单规则 (支持名称或 Bundle ID，如: -a 微信)");
-    println!("  -r, --remove-whitelist <ID> 从白名单移除规则并记录至禁用列表 (支持内置预设与用户规则)");
-    println!("  -k, --keep <NAME/BUNDLE>  命令行临时追加豁免白名单 (仅对当前进程生效，支持多次传入)");
-    println!("  -p, --purge               终止完成后调用 /usr/sbin/purge 清空系统缓存");
-    println!("  -c, --config <FILE>       指定自定义 TOML 配置文件路径");
-    println!("      --init-config         在 ~/.config/mtc/config.toml 生成默认配置模板");
-    println!("      --json                以结构化 JSON 格式输出结果 (适配 Raycast / 脚本接入)");
-    println!("  -h, --help                显示帮助说明");
-    println!("  -v, --version             显示当前版本与许可信息");
-    println!();
-    println!("白名单分级体系:");
-    println!("  L1: 系统核心层 (Finder, Dock, WindowServer)");
-    println!("  L2: 会话终端层 (保护当前调用终端、父会话 PID 与常用终端/IDE)");
-    println!("  L3: 常驻设施层 (Raycast, Alfred, 窗口管理与输入法)");
-    println!("  L4: 用户配置层 (来自配置文件与 -k/--keep 命令行参数)");
+fn parse_cli_args() -> Result<CliArgs, String> {
+    parse_cli_args_from(env::args().skip(1))
+}
+
+fn print_help(lang: Language) {
+    println!("{}", CliMessages::help_text(VERSION, lang));
 }
 
 fn main() {
     let cli = match parse_cli_args() {
         Ok(args) => args,
         Err(e) => {
-            eprintln!("[错误] {}", e);
-            eprintln!("请使用 --help 查看完整参数说明。");
+            let lang = Language::detect_system();
+            eprintln!("[ERROR] {}", e);
+            eprintln!("{}", CliMessages::err_hint_help(lang));
             std::process::exit(1);
         }
     };
 
+    let lang = cli.lang.unwrap_or_else(Language::detect_system);
+
     if cli.show_help {
-        print_help();
+        print_help(lang);
         return;
     }
 
     if cli.show_version {
-        println!("macOS Task Cleaner CLI (mtc / taskcleaner) v{}", VERSION);
-        println!("Copyright (c) 2026 DonJone. All rights reserved.");
-        println!("License: GNU Affero General Public License v3.0 (AGPLv3) / Commercial Dual License.");
-        println!("Policy: See COMMERCIAL.md for commercial licensing and TRADEMARK.md for brand policy.");
-        println!("Homepage: https://github.com/macos-task-cleaner/macos-task-cleaner-cli");
+        println!("{}", CliMessages::version_text(VERSION, lang));
         return;
     }
 
@@ -172,11 +165,11 @@ fn main() {
     if cli.init_config {
         match WhitelistManager::generate_default_config_file(cli.config_path.as_deref()) {
             Ok(path) => {
-                println!("[配置初始化成功] 配置文件已生成至: {}", path.display());
+                println!("{}", CliMessages::config_init_success(&path.display().to_string(), lang));
                 return;
             }
             Err(e) => {
-                eprintln!("[配置初始化失败] 无法写入配置文件: {}", e);
+                eprintln!("{}", CliMessages::config_init_failed(&e.to_string(), lang));
                 std::process::exit(1);
             }
         }
@@ -187,14 +180,15 @@ fn main() {
         for ident in &cli.add_whitelist {
             match WhitelistManager::add_identifier_to_config(cli.config_path.as_deref(), ident) {
                 Ok((saved_path, is_new)) => {
+                    let path_str = saved_path.display().to_string();
                     if is_new {
-                        println!("[白名单添加成功] 已将 '{}' 写入配置文件: {}", ident, saved_path.display());
+                        println!("{}", CliMessages::whitelist_add_success(ident, &path_str, lang));
                     } else {
-                        println!("[白名单已存在] '{}' 已包含在配置文件中: {}", ident, saved_path.display());
+                        println!("{}", CliMessages::whitelist_add_exists(ident, &path_str, lang));
                     }
                 }
                 Err(e) => {
-                    eprintln!("[白名单写入失败] 添加 '{}' 失败: {}", ident, e);
+                    eprintln!("{}", CliMessages::whitelist_add_failed(ident, &e.to_string(), lang));
                     std::process::exit(1);
                 }
             }
@@ -207,14 +201,15 @@ fn main() {
         for ident in &cli.remove_whitelist {
             match WhitelistManager::remove_identifier_from_config(cli.config_path.as_deref(), ident) {
                 Ok((saved_path, is_modified)) => {
+                    let path_str = saved_path.display().to_string();
                     if is_modified {
-                        println!("[白名单移除成功] 已将 '{}' 从白名单移除/记录至禁用列表: {}", ident, saved_path.display());
+                        println!("{}", CliMessages::whitelist_remove_success(ident, &path_str, lang));
                     } else {
-                        println!("[白名单状态未变] '{}' 未在白名单中或已处于禁用状态: {}", ident, saved_path.display());
+                        println!("{}", CliMessages::whitelist_remove_unchanged(ident, &path_str, lang));
                     }
                 }
                 Err(e) => {
-                    eprintln!("[白名单移除失败] 移除 '{}' 失败: {}", ident, e);
+                    eprintln!("{}", CliMessages::whitelist_remove_failed(ident, &e.to_string(), lang));
                     std::process::exit(1);
                 }
             }
@@ -247,19 +242,22 @@ fn main() {
         } else {
             TerminationMode::Standard
         };
-        let report = terminate_with_mode(&targets_to_kill, grace_period, mode);
+        let report = terminate_with_mode_with_lang(&targets_to_kill, grace_period, mode, lang);
         if cli.json {
             println!("{}", serde_json::to_string(&report).unwrap_or_default());
         } else {
             for rec in &report.records {
                 if rec.error_msg.is_none() {
-                    println!("[终止成功] 已结束应用: {} (PID: {})", rec.app.name, rec.app.pid);
+                    println!("{}", CliMessages::term_pid_success(&rec.app.name, rec.app.pid, lang));
                 } else {
                     eprintln!(
-                        "[终止失败] 无法结束应用: {} (PID: {}): {}",
-                        rec.app.name,
-                        rec.app.pid,
-                        rec.error_msg.as_deref().unwrap_or("未知原因")
+                        "{}",
+                        CliMessages::term_pid_failed(
+                            &rec.app.name,
+                            rec.app.pid,
+                            rec.error_msg.as_deref().unwrap_or("-"),
+                            lang
+                        )
                     );
                 }
             }
@@ -277,6 +275,7 @@ fn main() {
             &cli.cli_keeps,
             grace_period,
             cli.purge,
+            lang,
         );
         return;
     }
@@ -292,12 +291,12 @@ fn main() {
     // 扫描前台 GUI 应用
     let scanned_apps = scan_foreground_apps();
 
-    // 应用白名单多级过滤网
+    // 应用白名单多级过滤网 (传入当前语言以获得本地化标签)
     let mut protected_list = Vec::new();
     let mut target_list = Vec::new();
 
     for app in scanned_apps.iter() {
-        if let Some(matched) = whitelist.check_protection(app) {
+        if let Some(matched) = whitelist.check_protection_with_lang(app, lang) {
             protected_list.push((app.clone(), matched));
         } else {
             target_list.push(app.clone());
@@ -315,6 +314,7 @@ fn main() {
             scan_duration_ms,
             whitelist.loaded_config_path.as_deref(),
             cli.json,
+            lang,
         );
         return;
     }
@@ -327,15 +327,95 @@ fn main() {
     } else {
         TerminationMode::Standard
     };
-    let report = terminate_with_mode(&target_list, grace_period, mode);
-    render_execution_report(&report, cli.json);
+    let report = terminate_with_mode_with_lang(&target_list, grace_period, mode, lang);
+    render_execution_report(&report, cli.json, lang);
 
     // 可选内存整理反馈 (--purge)
     if cli.purge && !cli.json {
         if report.cache_purged {
-            println!("\n[内存回收完成] /usr/sbin/purge 缓存页面整理完成");
+            println!("\n{}", CliMessages::purge_success(lang));
         } else {
-            eprintln!("\n[警告] 执行 /usr/sbin/purge 失败或受权限限制");
+            eprintln!("\n{}", CliMessages::purge_warn(lang));
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_cli_args_lang_flag() {
+        let args = vec!["--lang", "en", "-n"];
+        let cli = parse_cli_args_from(args).expect("parse should succeed");
+        assert_eq!(cli.lang, Some(Language::En));
+        assert_eq!(cli.dry_run, Some(true));
+
+        let args_zh = vec!["-l", "zh-Hant", "-e"];
+        let cli_zh = parse_cli_args_from(args_zh).expect("parse should succeed");
+        assert_eq!(cli_zh.lang, Some(Language::ZhHant));
+        assert_eq!(cli_zh.dry_run, Some(false));
+
+        let args_ja = vec!["--lang", "ja", "--interactive"];
+        let cli_ja = parse_cli_args_from(args_ja).expect("parse should succeed");
+        assert_eq!(cli_ja.lang, Some(Language::Ja));
+        assert!(cli_ja.interactive);
+    }
+
+    #[test]
+    fn test_help_text_multilingual() {
+        let help_en = CliMessages::help_text(VERSION, Language::En);
+        assert!(help_en.contains("Usage:"));
+        assert!(help_en.contains("Whitelist Defense Matrix:"));
+        assert!(help_en.contains("--lang <LANG>"));
+
+        let help_zh = CliMessages::help_text(VERSION, Language::ZhHans);
+        assert!(help_zh.contains("用法:"));
+        assert!(help_zh.contains("白名单分级体系:"));
+
+        let help_ja = CliMessages::help_text(VERSION, Language::Ja);
+        assert!(help_ja.contains("使用方法:"));
+        assert!(help_ja.contains("ホワイトリスト階層システム:"));
+
+        let help_zht = CliMessages::help_text(VERSION, Language::ZhHant);
+        assert!(help_zht.contains("用法:"));
+        assert!(help_zht.contains("白名單分級體系:"));
+    }
+
+    #[test]
+    fn test_version_multilingual() {
+        let ver_en = CliMessages::version_text(VERSION, Language::En);
+        assert!(ver_en.contains("All rights reserved"));
+
+        let ver_zh = CliMessages::version_text(VERSION, Language::ZhHans);
+        assert!(ver_zh.contains("保留所有权利"));
+    }
+
+    #[test]
+    fn test_error_messages_multilingual() {
+        let err_en = CliMessages::err_missing_value("--config", Language::En);
+        assert_eq!(err_en, "Missing value for argument --config");
+
+        let err_zh = CliMessages::err_missing_value("--config", Language::ZhHans);
+        assert_eq!(err_zh, "缺少 --config 参数值");
+
+        let pid_err_en = CliMessages::err_invalid_pid("abc", Language::En);
+        assert_eq!(pid_err_en, "Invalid PID: abc");
+
+        let pid_err_ja = CliMessages::err_invalid_pid("abc", Language::Ja);
+        assert_eq!(pid_err_ja, "無効な PID です: abc");
+    }
+
+    #[test]
+    fn test_dry_run_strings_multilingual() {
+        let stats_en = CliMessages::dry_run_stats(5, 2, 3, Language::En);
+        assert!(stats_en.contains("Scanned Foreground Apps: 5"));
+
+        let stats_zh = CliMessages::dry_run_stats(5, 2, 3, Language::ZhHans);
+        assert!(stats_zh.contains("发现前台图形应用: 5 个"));
+
+        let (c1, _, _, _) = CliMessages::dry_run_targets_cols(Language::Ja);
+        assert_eq!(c1, "PID");
+    }
+}
+
