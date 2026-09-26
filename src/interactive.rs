@@ -15,7 +15,7 @@ pub fn run_interactive_session(
     cli_keeps: &[String],
     grace_period: Duration,
     do_purge: bool,
-    lang: Language,
+    mut lang: Language,
 ) {
     let mut in_memory_keeps = cli_keeps.to_vec();
 
@@ -69,6 +69,12 @@ pub fn run_interactive_session(
                 "p" | "protected" => {
                     handle_protected_apps(custom_config_path, &protected_list, lang);
                 }
+                "l" | "lang" => {
+                    if let Some(new_lang) = run_language_select_menu(custom_config_path, lang) {
+                        lang = new_lang;
+                    }
+                    continue;
+                }
                 "r" | "refresh" => {
                     continue;
                 }
@@ -89,11 +95,12 @@ pub fn run_interactive_session(
         println!("{:<4} {:<7} {:<20} {}", c_no, c_pid, c_name, c_bid);
         println!("{:-<4} {:-<7} {:-<20} {:-<30}", "", "", "", "");
         for (idx, target) in target_list.iter().enumerate() {
+            let display_name = CliMessages::resolve_app_name(&target.bundle_id, &target.name, lang);
             println!(
                 "[{:>2}] {:<7} {:<20} {}",
                 idx + 1,
                 target.pid,
-                target.name,
+                display_name,
                 target.bundle_id
             );
         }
@@ -128,6 +135,12 @@ pub fn run_interactive_session(
             }
             "p" | "protected" => {
                 handle_protected_apps(custom_config_path, &protected_list, lang);
+                continue;
+            }
+            "l" | "lang" => {
+                if let Some(new_lang) = run_language_select_menu(custom_config_path, lang) {
+                    lang = new_lang;
+                }
                 continue;
             }
             "c" | "clean" => {
@@ -276,11 +289,12 @@ fn handle_protected_apps(
     println!("{:<4} {:<7} {:<18} {:<16} {}", c_no, c_pid, c_name, c_tier, c_rule);
     println!("{:-<4} {:-<7} {:-<18} {:-<16} {:-<20}", "", "", "", "", "");
     for (idx, (app, matched)) in protected_list.iter().enumerate() {
+        let display_name = CliMessages::resolve_app_name(&app.bundle_id, &app.name, lang);
         println!(
             "[{:>2}] {:<7} {:<18} {:<16} {}",
             idx + 1,
             app.pid,
-            app.name,
+            display_name,
             matched.tier_label,
             matched.matched_rule
         );
@@ -376,3 +390,101 @@ fn execute_purge(lang: Language) {
         Err(e) => eprintln!("{}: {}", CliMessages::purge_warn(lang), e),
     }
 }
+
+/// 交互式语言切换向导菜单，支持保存至用户配置文件
+pub fn run_language_select_menu(
+    custom_config_path: Option<&Path>,
+    current_lang: Language,
+) -> Option<Language> {
+    println!();
+    println!("============================================================");
+    println!("{}", CliMessages::lang_menu_banner(current_lang));
+    println!("============================================================");
+    let detected = Language::detect_system();
+    println!("[Current / 当前语言]    {:?} ({})", current_lang, current_lang.code());
+    println!("[Terminal / 终端探测]   {:?} ({})", detected, detected.code());
+    println!();
+    println!("Available Languages / 可选语言:");
+    println!("  [ 0] Auto (Terminal & System Auto-Detect / 自动探测)");
+    println!("  [ 1] English (en)               [13] Nederlands (nl)");
+    println!("  [ 2] 简体中文 (zh-Hans)          [14] Polski (pl)");
+    println!("  [ 3] 繁體中文 (zh-Hant)          [15] Türkçe (tr)");
+    println!("  [ 4] 日本語 (ja)                 [16] العربية (ar)");
+    println!("  [ 5] 한국어 (ko)                 [17] ไทย (th)");
+    println!("  [ 6] Français (fr)              [18] Tiếng Việt (vi)");
+    println!("  [ 7] Deutsch (de)               [19] Bahasa Indonesia (id)");
+    println!("  [ 8] Español (es)               [20] Svenska (sv)");
+    println!("  [ 9] Português (pt)             [21] Dansk (da)");
+    println!("  [10] Italiano (it)              [22] Norsk Bokmål (nb)");
+    println!("  [11] Русский (ru)               [23] Suomi (fi)");
+    println!("  [12] Čeština (cs)               [24] Українська (uk)");
+    println!("------------------------------------------------------------");
+    print!("{}", CliMessages::lang_menu_prompt(current_lang));
+    let _ = io::stdout().flush();
+
+    let mut input = String::new();
+    if io::stdin().read_line(&mut input).is_err() {
+        return None;
+    }
+
+    let trimmed = input.trim();
+    if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("q") || trimmed.eq_ignore_ascii_case("quit") {
+        return None;
+    }
+
+    let (chosen_lang, code_to_save, is_auto) = match trimmed {
+        "0" | "auto" | "a" => (detected, "auto", true),
+        "1" => (Language::En, "en", false),
+        "2" => (Language::ZhHans, "zh-Hans", false),
+        "3" => (Language::ZhHant, "zh-Hant", false),
+        "4" => (Language::Ja, "ja", false),
+        "5" => (Language::Ko, "ko", false),
+        "6" => (Language::Fr, "fr", false),
+        "7" => (Language::De, "de", false),
+        "8" => (Language::Es, "es", false),
+        "9" => (Language::Pt, "pt", false),
+        "10" => (Language::It, "it", false),
+        "11" => (Language::Ru, "ru", false),
+        "12" => (Language::Cs, "cs", false),
+        "13" => (Language::Nl, "nl", false),
+        "14" => (Language::Pl, "pl", false),
+        "15" => (Language::Tr, "tr", false),
+        "16" => (Language::Ar, "ar", false),
+        "17" => (Language::Th, "th", false),
+        "18" => (Language::Vi, "vi", false),
+        "19" => (Language::Id, "id", false),
+        "20" => (Language::Sv, "sv", false),
+        "21" => (Language::Da, "da", false),
+        "22" => (Language::Nb, "nb", false),
+        "23" => (Language::Fi, "fi", false),
+        "24" => (Language::Uk, "uk", false),
+        custom => {
+            let parsed = Language::from_locale_str(custom);
+            (parsed, parsed.code(), false)
+        }
+    };
+
+    match WhitelistManager::set_language_in_config(custom_config_path, code_to_save) {
+        Ok((saved_path, _)) => {
+            let path_str = saved_path.display().to_string();
+            if is_auto {
+                println!(
+                    "{}",
+                    CliMessages::lang_auto_saved_notice(&path_str, detected.code(), chosen_lang)
+                );
+            } else {
+                let target_name = format!("{:?} ({})", chosen_lang, chosen_lang.code());
+                println!(
+                    "{}",
+                    CliMessages::lang_saved_notice(&target_name, &path_str, chosen_lang)
+                );
+            }
+            Some(chosen_lang)
+        }
+        Err(e) => {
+            eprintln!("[ERROR] {}", e);
+            None
+        }
+    }
+}
+

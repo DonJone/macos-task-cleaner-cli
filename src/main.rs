@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use i18n::CliMessages;
-use interactive::run_interactive_session;
+use interactive::{run_interactive_session, run_language_select_menu};
 use macos_task_cleaner_core::{
     scan_foreground_apps, terminate_with_mode_with_lang, AppTarget, Language, TerminationMode,
     WhitelistManager,
@@ -25,6 +25,8 @@ struct CliArgs {
     json: bool,
     config_path: Option<PathBuf>,
     lang: Option<Language>,
+    set_lang_code: Option<String>,
+    select_lang_menu: bool,
     cli_keeps: Vec<String>,
     add_whitelist: Vec<String>,
     remove_whitelist: Vec<String>,
@@ -32,6 +34,7 @@ struct CliArgs {
     init_config: bool,
     show_help: bool,
     show_version: bool,
+    has_explicit_action: bool,
 }
 
 fn parse_cli_args_from<I, T>(args_iter: I) -> Result<CliArgs, String>
@@ -47,33 +50,57 @@ where
         match arg.as_str() {
             "-n" | "--dry-run" => {
                 cli.dry_run = Some(true);
+                cli.has_explicit_action = true;
             }
             "-e" | "--execute" => {
                 cli.dry_run = Some(false);
+                cli.has_explicit_action = true;
             }
             "-i" | "--interactive" => {
                 cli.interactive = true;
+                cli.has_explicit_action = true;
             }
             "-f" | "--force" => {
                 cli.force = true;
                 cli.dry_run = Some(false);
+                cli.has_explicit_action = true;
             }
             "-p" | "--purge" => {
                 cli.purge = true;
+                cli.has_explicit_action = true;
             }
             "--json" => {
                 cli.json = true;
             }
             "--init-config" => {
                 cli.init_config = true;
+                cli.has_explicit_action = true;
             }
             "-l" | "--lang" => {
-                if let Some(val) = args.next() {
-                    let parsed = Language::from_locale_str(&val);
-                    active_lang = parsed;
-                    cli.lang = Some(parsed);
-                } else {
-                    return Err(CliMessages::err_missing_value("--lang", active_lang));
+                let next_arg = args.peek().cloned();
+                match next_arg {
+                    None => {
+                        cli.select_lang_menu = true;
+                    }
+                    Some(ref val) if val.starts_with('-') => {
+                        cli.select_lang_menu = true;
+                    }
+                    Some(ref val)
+                        if val.eq_ignore_ascii_case("menu")
+                            || val.eq_ignore_ascii_case("select")
+                            || val.eq_ignore_ascii_case("wizard")
+                            || val.eq_ignore_ascii_case("list") =>
+                    {
+                        args.next();
+                        cli.select_lang_menu = true;
+                    }
+                    Some(val) => {
+                        args.next();
+                        let parsed = Language::from_locale_str(&val);
+                        active_lang = parsed;
+                        cli.lang = Some(parsed);
+                        cli.set_lang_code = Some(val);
+                    }
                 }
             }
             "-c" | "--config" => {
@@ -93,6 +120,7 @@ where
             "-a" | "--add-whitelist" => {
                 if let Some(val) = args.next() {
                     cli.add_whitelist.push(val);
+                    cli.has_explicit_action = true;
                 } else {
                     return Err(CliMessages::err_missing_value("--add-whitelist", active_lang));
                 }
@@ -100,6 +128,7 @@ where
             "-r" | "--remove-whitelist" | "--unprotect" => {
                 if let Some(val) = args.next() {
                     cli.remove_whitelist.push(val);
+                    cli.has_explicit_action = true;
                 } else {
                     return Err(CliMessages::err_missing_value("--remove-whitelist", active_lang));
                 }
@@ -108,6 +137,7 @@ where
                 if let Some(val) = args.next() {
                     if let Ok(pid) = val.parse::<i32>() {
                         cli.terminate_pids.push(pid);
+                        cli.has_explicit_action = true;
                     } else {
                         return Err(CliMessages::err_invalid_pid(&val, active_lang));
                     }
@@ -149,7 +179,15 @@ fn main() {
         }
     };
 
-    let lang = cli.lang.unwrap_or_else(Language::detect_system);
+    // 1. 初始化并加载基础配置及白名单
+    let (whitelist, config) =
+        WhitelistManager::new(cli.config_path.as_deref(), &cli.cli_keeps);
+
+    // 2. 语言决策优先级: CLI 显式参数 > 配置文件设定 > 终端环境变量 (LC_ALL/LC_MESSAGES/LANG) > macOS 全局偏好
+    let lang = cli
+        .lang
+        .or_else(|| config.general.language.as_deref().map(Language::from_locale_str))
+        .unwrap_or_else(Language::detect_system);
 
     if cli.show_help {
         print_help(lang);
@@ -161,7 +199,44 @@ fn main() {
         return;
     }
 
-    // 1. 处理配置文件初始化 (--init-config)
+    // 3. 语言切换向导菜单 (-l / --lang / --lang menu)
+    if cli.select_lang_menu {
+        run_language_select_menu(cli.config_path.as_deref(), lang);
+        return;
+    }
+
+    // 3.5 独立设置语言配置 (--lang <CODE> 且未指定具体执行动作)
+    // 安全防护：防止用户只想设定语言偏好时意外触发进程清理！
+    if let Some(ref code) = cli.set_lang_code {
+        if !cli.has_explicit_action {
+            match WhitelistManager::set_language_in_config(cli.config_path.as_deref(), code) {
+                Ok((saved_path, _)) => {
+                    let path_str = saved_path.display().to_string();
+                    let target_lang = Language::from_locale_str(code);
+                    if code.eq_ignore_ascii_case("auto") {
+                        let detected = Language::detect_system();
+                        println!(
+                            "{}",
+                            CliMessages::lang_auto_saved_notice(&path_str, detected.code(), target_lang)
+                        );
+                    } else {
+                        let name = format!("{:?} ({})", target_lang, target_lang.code());
+                        println!(
+                            "{}",
+                            CliMessages::lang_saved_notice(&name, &path_str, target_lang)
+                        );
+                    }
+                    return;
+                }
+                Err(e) => {
+                    eprintln!("[ERROR] {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
+
+    // 4. 处理配置文件初始化 (--init-config)
     if cli.init_config {
         match WhitelistManager::generate_default_config_file(cli.config_path.as_deref()) {
             Ok(path) => {
@@ -175,7 +250,7 @@ fn main() {
         }
     }
 
-    // 2. 处理直接追加白名单 (-a / --add-whitelist)
+    // 5. 处理直接追加白名单 (-a / --add-whitelist)
     if !cli.add_whitelist.is_empty() {
         for ident in &cli.add_whitelist {
             match WhitelistManager::add_identifier_to_config(cli.config_path.as_deref(), ident) {
@@ -196,7 +271,7 @@ fn main() {
         return;
     }
 
-    // 2.5 处理移除白名单 (-r / --remove-whitelist)
+    // 6. 处理移除白名单 (-r / --remove-whitelist)
     if !cli.remove_whitelist.is_empty() {
         for ident in &cli.remove_whitelist {
             match WhitelistManager::remove_identifier_from_config(cli.config_path.as_deref(), ident) {
@@ -217,9 +292,6 @@ fn main() {
         return;
     }
 
-    // 3. 加载基础配置与超时时长
-    let (whitelist, config) =
-        WhitelistManager::new(cli.config_path.as_deref(), &cli.cli_keeps);
     let grace_period = Duration::from_millis(config.general.grace_period_ms);
 
     // 3.5 处理指定 PID 单独终止 (-t / --terminate-pid)
@@ -350,16 +422,43 @@ mod tests {
         let cli = parse_cli_args_from(args).expect("parse should succeed");
         assert_eq!(cli.lang, Some(Language::En));
         assert_eq!(cli.dry_run, Some(true));
+        assert!(cli.has_explicit_action);
 
         let args_zh = vec!["-l", "zh-Hant", "-e"];
         let cli_zh = parse_cli_args_from(args_zh).expect("parse should succeed");
         assert_eq!(cli_zh.lang, Some(Language::ZhHant));
         assert_eq!(cli_zh.dry_run, Some(false));
+        assert!(cli_zh.has_explicit_action);
 
         let args_ja = vec!["--lang", "ja", "--interactive"];
         let cli_ja = parse_cli_args_from(args_ja).expect("parse should succeed");
         assert_eq!(cli_ja.lang, Some(Language::Ja));
         assert!(cli_ja.interactive);
+        assert!(cli_ja.has_explicit_action);
+    }
+
+    #[test]
+    fn test_parse_cli_args_lang_menu() {
+        let args_empty = vec!["--lang"];
+        let cli_empty = parse_cli_args_from(args_empty).expect("parse should succeed");
+        assert!(cli_empty.select_lang_menu);
+
+        let args_short = vec!["-l"];
+        let cli_short = parse_cli_args_from(args_short).expect("parse should succeed");
+        assert!(cli_short.select_lang_menu);
+
+        let args_menu = vec!["--lang", "menu"];
+        let cli_menu = parse_cli_args_from(args_menu).expect("parse should succeed");
+        assert!(cli_menu.select_lang_menu);
+    }
+
+    #[test]
+    fn test_parse_cli_args_lang_standalone() {
+        let args = vec!["--lang", "en"];
+        let cli = parse_cli_args_from(args).expect("parse should succeed");
+        assert_eq!(cli.lang, Some(Language::En));
+        assert_eq!(cli.set_lang_code, Some("en".to_string()));
+        assert!(!cli.has_explicit_action);
     }
 
     #[test]

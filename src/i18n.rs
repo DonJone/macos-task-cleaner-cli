@@ -603,10 +603,10 @@ Whitelist Defense Matrix:
 
     pub fn interactive_empty_menu(lang: Language) -> &'static str {
         match lang {
-            Language::ZhHans => "操作指令:\n  p / protected   查看当前已被保护的应用清单\n  r / refresh     重新扫描系统前台应用\n  q / quit        退出程序",
-            Language::ZhHant => "操作指令:\n  p / protected   查看目前已被保護的應用程式清單\n  r / refresh     重新掃描系統幕前應用程式\n  q / quit        結束程式",
-            Language::Ja => "コマンド:\n  p / protected   保護中のアプリ一覧を表示\n  r / refresh     フォアグラウンドアプリを再スキャン\n  q / quit        終了",
-            _ => "Commands:\n  p / protected   View list of currently protected applications\n  r / refresh     Rescan system foreground applications\n  q / quit        Exit program",
+            Language::ZhHans => "操作指令:\n  p / protected   查看当前已被保护的应用清单\n  l / lang        打开界面语言切换向导\n  r / refresh     重新扫描系统前台应用\n  q / quit        退出程序",
+            Language::ZhHant => "操作指令:\n  p / protected   查看目前已被保護的應用程式清單\n  l / lang        開啟介面語言切換精靈\n  r / refresh     重新掃描系統幕前應用程式\n  q / quit        結束程式",
+            Language::Ja => "コマンド:\n  p / protected   保護中のアプリ一覧を表示\n  l / lang        言語切り替えウィザードを開く\n  r / refresh     フォアグラウンドアプリを再スキャン\n  q / quit        終了",
+            _ => "Commands:\n  p / protected   View list of currently protected applications\n  l / lang        Open language switcher wizard\n  r / refresh     Rescan system foreground applications\n  q / quit        Exit program",
         }
     }
 
@@ -630,10 +630,10 @@ Whitelist Defense Matrix:
 
     pub fn interactive_invalid_prompt(lang: Language) -> &'static str {
         match lang {
-            Language::ZhHans => "[提示] 输入无效，请输入 p / r / q。",
-            Language::ZhHant => "[提示] 輸入無效，請輸入 p / r / q。",
-            Language::Ja => "[ヒント] 無効な入力です。p / r / q を入力してください。",
-            _ => "[Hint] Invalid input. Please enter p / r / q.",
+            Language::ZhHans => "[提示] 输入无效，请输入 p / l / r / q。",
+            Language::ZhHant => "[提示] 輸入無效，請輸入 p / l / r / q。",
+            Language::Ja => "[ヒント] 無効な入力です。p / l / r / q を入力してください。",
+            _ => "[Hint] Invalid input. Please enter p / l / r / q.",
         }
     }
 
@@ -657,12 +657,13 @@ Whitelist Defense Matrix:
 
     pub fn interactive_guide(lang: Language) -> &'static str {
         match lang {
-            Language::ZhHans => "操作指令指南:\n  w [编号...]   将指定应用永久加入配置文件白名单 (例: w 1, 2 或 w 1 3)\n  t [编号...]   在本轮清场中临时跳过/豁免 (例: t 1)\n  c / clean     确认执行标准终止 (向目标发送 SIGTERM，超时升级为 SIGKILL)\n  f / force     立即强制终止 (跳过宽限期，直接发送 SIGKILL)\n  p / protected 查看并管理当前已被保护的应用清单 (可移出白名单)\n  r / refresh   重新扫描系统前台应用\n  q / quit      取消并安全退出",
-            Language::ZhHant => "操作指令指南:\n  w [序號...]   將指定應用程式永久加入設定檔白名單 (例: w 1, 2 或 w 1 3)\n  t [序號...]   在本輪清場中臨時略過/豁免 (例: t 1)\n  c / clean     確認執行標準結束 (向目標發送 SIGTERM，超時升級為 SIGKILL)\n  f / force     立即強制結束 (跳過寬限期，直接發送 SIGKILL)\n  p / protected 查看並管理目前已被保護的應用程式清單 (可移出白名單)\n  r / refresh   重新掃描系統幕前應用程式\n  q / quit      取消並安全結束",
-            Language::Ja => "コマンドガイド:\n  w [番号...]   指定アプリを設定ファイルホワイトリストに永続追加 (例: w 1, 2 または w 1 3)\n  t [番号...]   このセッションのみ一時的にスキップ (例: t 1)\n  c / clean     標準終了を実行 (SIGTERM送信後、タイムアウトでSIGKILL)\n  f / force     即時強制終了 (猶予期間をスキップし直接SIGKILL送信)\n  p / protected 現在の保護アプリ一覧を表示・管理 (除外解除可能)\n  r / refresh   フォアグラウンドアプリを再スキャン\n  q / quit      キャンセルして安全に終了",
-            _ => "Commands Guide:\n  w [no...]     Permanently add specified apps to config whitelist (e.g.: w 1, 2 or w 1 3)\n  t [no...]     Temporarily skip in this session (e.g.: t 1)\n  c / clean     Confirm standard termination (SIGTERM -> SIGKILL escalation on timeout)\n  f / force     Immediate forced termination (skip grace period, send SIGKILL directly)\n  p / protected View & manage protected apps list (allows removing from whitelist)\n  r / refresh   Rescan system foreground applications\n  q / quit      Cancel and safely exit",
+            Language::ZhHans => "操作指令指南:\n  w [编号...]   将指定应用永久加入配置文件白名单 (例: w 1, 2 或 w 1 3)\n  t [编号...]   在本轮清场中临时跳过/豁免 (例: t 1)\n  c / clean     确认执行标准终止 (向目标发送 SIGTERM，超时升级为 SIGKILL)\n  f / force     立即强制终止 (跳过宽限期，直接发送 SIGKILL)\n  p / protected 查看并管理当前已被保护的应用清单 (可移出白名单)\n  l / lang      打开界面语言切换向导 (保存偏好至配置文件)\n  r / refresh   重新扫描系统前台应用\n  q / quit      取消并安全退出",
+            Language::ZhHant => "操作指令指南:\n  w [序號...]   將指定應用程式永久加入設定檔白名單 (例: w 1, 2 或 w 1 3)\n  t [序號...]   在本輪清場中臨時略過/豁免 (例: t 1)\n  c / clean     確認執行標準結束 (向目標發送 SIGTERM，超時升級為 SIGKILL)\n  f / force     立即強制結束 (跳過寬限期，直接發送 SIGKILL)\n  p / protected 查看並管理目前已被保護的應用程式清單 (可移出白名單)\n  l / lang      開啟介面語言切換精靈 (儲存偏好至設定檔)\n  r / refresh   重新掃描系統幕前應用程式\n  q / quit      取消並安全結束",
+            Language::Ja => "コマンドガイド:\n  w [番号...]   指定アプリを設定ファイルホワイトリストに永続追加 (例: w 1, 2 または w 1 3)\n  t [番号...]   このセッションのみ一時的にスキップ (例: t 1)\n  c / clean     標準終了を実行 (SIGTERM送信後、タイムアウトでSIGKILL)\n  f / force     即時強制終了 (猶予期間をスキップし直接SIGKILL送信)\n  p / protected 現在の保護アプリ一覧を表示・管理 (除外解除可能)\n  l / lang      言語切り替えウィザードを開く (設定ファイルに保存)\n  r / refresh   フォアグラウンドアプリを再スキャン\n  q / quit      キャンセルして安全に終了",
+            _ => "Commands Guide:\n  w [no...]     Permanently add specified apps to config whitelist (e.g.: w 1, 2 or w 1 3)\n  t [no...]     Temporarily skip in this session (e.g.: t 1)\n  c / clean     Confirm standard termination (SIGTERM -> SIGKILL escalation on timeout)\n  f / force     Immediate forced termination (skip grace period, send SIGKILL directly)\n  p / protected View & manage protected apps list (allows removing from whitelist)\n  l / lang      Open language switcher wizard (saves to config.toml)\n  r / refresh   Rescan system foreground applications\n  q / quit      Cancel and safely exit",
         }
     }
+
 
     pub fn interactive_refreshing(lang: Language) -> &'static str {
         match lang {
@@ -917,6 +918,42 @@ Whitelist Defense Matrix:
                 _ => "Finder".to_string(),
             },
             _ => fallback.to_string(),
+        }
+    }
+
+    pub fn lang_menu_banner(lang: Language) -> &'static str {
+        match lang {
+            Language::ZhHans => "              macOS Task Cleaner - 界面语言切换向导         ",
+            Language::ZhHant => "              macOS Task Cleaner - 介面語言切換精靈         ",
+            Language::Ja => "              macOS Task Cleaner - 言語切り替えウィザード    ",
+            _ => "              macOS Task Cleaner - Language Switcher Wizard ",
+        }
+    }
+
+    pub fn lang_menu_prompt(lang: Language) -> &'static str {
+        match lang {
+            Language::ZhHans => "请选择语言编号 [0-24, 或输入代码如 'en', 'q' 取消] > ",
+            Language::ZhHant => "請選擇語言編號 [0-24, 或輸入代碼如 'en', 'q' 取消] > ",
+            Language::Ja => "言語番号を入力してください [0-24、または 'en' 等のコード、'q' で取消] > ",
+            _ => "Select language index [0-24, or code like 'en', 'q' to cancel] > ",
+        }
+    }
+
+    pub fn lang_saved_notice(target: &str, path: &str, lang: Language) -> String {
+        match lang {
+            Language::ZhHans => format!("[语言设置已更新] 默认语言已设置为: {} (已保存至: {})", target, path),
+            Language::ZhHant => format!("[語言設定已更新] 預設語言已設定為: {} (已儲存至: {})", target, path),
+            Language::Ja => format!("[言語設定更新] デフォルト言語を '{}' に設定しました (保存先: {})", target, path),
+            _ => format!("[Language Configured] Default UI language set to: {} (saved to: {})", target, path),
+        }
+    }
+
+    pub fn lang_auto_saved_notice(path: &str, detected: &str, lang: Language) -> String {
+        match lang {
+            Language::ZhHans => format!("[语言设置已更新] 已切换为自动探测 (当前终端探测为: {}, 配置已保存至: {})", detected, path),
+            Language::ZhHant => format!("[語言設定已更新] 已切換為自動偵測 (目前終端機偵測為: {}, 設定已儲存至: {})", detected, path),
+            Language::Ja => format!("[言語設定更新] 自動検出に設定しました (現在の検出: {}, 保存先: {})", detected, path),
+            _ => format!("[Language Configured] Set to Auto-Detect (current terminal detects: {}, saved to: {})", detected, path),
         }
     }
 }
