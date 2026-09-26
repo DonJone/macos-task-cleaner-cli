@@ -22,6 +22,8 @@ pub struct ProtectedAppEntry {
     pub name: String,
     pub bundle_id: String,
     pub tier: String,
+    #[serde(default)]
+    pub tier_id: String,
     pub rule: String,
 }
 
@@ -54,6 +56,7 @@ pub fn render_dry_run_preview(
             name: app.name.clone(),
             bundle_id: app.bundle_id.clone(),
             tier: matched.tier_label.clone(),
+            tier_id: matched.tier_id.clone(),
             rule: matched.matched_rule.clone(),
         });
     }
