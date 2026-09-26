@@ -125,13 +125,13 @@ fn print_help() {
     println!("核心选项:");
     println!("  -i, --interactive         交互式清场向导 (推荐: 支持序号选择、添加/移除白名单与确认清场)");
     println!("  -n, --dry-run             预检预览模式 (仅扫描并分析白名单过滤，不发送任何终止信号)");
-    println!("  -e, --execute             执行实质清场动作 (执行 SIGTERM -> 轮询 -> SIGKILL 三段式下线)");
-    println!("  -f, --force               强制直接秒杀 (跳过宽限期，直接发送 SIGKILL)");
-    println!("  -t, --terminate-pid <PID> 针对指定的单个或多个 PID 执行三段式终止下线");
+    println!("  -e, --execute             执行实质终止动作 (按序执行 SIGTERM -> 轮询 -> SIGKILL 梯次终止)");
+    println!("  -f, --force               强制直接终止 (跳过宽限期，直接发送 SIGKILL)");
+    println!("  -t, --terminate-pid <PID> 针对指定的单个或多个 PID 执行梯次终止");
     println!("  -a, --add-whitelist <ID>  向永久配置文件追加白名单规则 (支持名称或 Bundle ID，如: -a 微信)");
     println!("  -r, --remove-whitelist <ID> 从白名单移除规则并记录至禁用列表 (支持内置预设与用户规则)");
     println!("  -k, --keep <NAME/BUNDLE>  命令行临时追加豁免白名单 (仅对当前进程生效，支持多次传入)");
-    println!("  -p, --purge               清场完成后调用 /usr/sbin/purge 强制回收内存缓存");
+    println!("  -p, --purge               终止完成后调用 /usr/sbin/purge 清空系统缓存");
     println!("  -c, --config <FILE>       指定自定义 TOML 配置文件路径");
     println!("      --init-config         在 ~/.config/mtc/config.toml 生成默认配置模板");
     println!("      --json                以结构化 JSON 格式输出结果 (适配 Raycast / 脚本接入)");

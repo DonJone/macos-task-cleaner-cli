@@ -130,7 +130,7 @@ pub fn render_dry_run_preview(
             let status_str = if target.is_alive {
                 "活跃 [可发信号]"
             } else {
-                "已挂起/下线"
+                "已挂起/已退出"
             };
             println!(
                 "{:<7} {:<18} {:<30} {}",
@@ -160,9 +160,9 @@ pub fn render_execution_report(report: &TerminationReport, as_json: bool) {
     println!("              macOS Task Cleaner - 执行结果报告             ");
     println!("============================================================");
     println!("* 目标应用总数:             {} 个", report.total_targets);
-    println!("* 优雅退出 (SIGTERM 软下线): {} 个", report.terminated_sigterm);
-    println!("* 兜底强退 (SIGKILL 硬回收): {} 个", report.terminated_sigkill);
-    println!("* 失败/无权限数量:           {} 个", report.failed);
+    println!("* 标准终止 (SIGTERM):         {} 个", report.terminated_sigterm);
+    println!("* 强制终止 (SIGKILL):         {} 个", report.terminated_sigkill);
+    println!("* 失败/权限拒绝:             {} 个", report.failed);
     println!("* 清场全流程总耗时:         {:.2}ms", report.duration_ms);
     println!("------------------------------------------------------------");
 

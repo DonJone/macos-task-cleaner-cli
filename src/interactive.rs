@@ -103,8 +103,8 @@ pub fn run_interactive_session(
         println!("操作指令指南:");
         println!("  w [编号...]   将指定应用永久加入配置文件白名单 (例: w 1, 2 或 w 1 3)");
         println!("  t [编号...]   在本轮清场中临时跳过/豁免 (例: t 1)");
-        println!("  c / clean     确认执行平滑清场 (向剩余未豁免目标发送 SIGTERM -> SIGKILL)");
-        println!("  f / force     立即强制秒杀 (跳过宽限期，直接发送 SIGKILL)");
+        println!("  c / clean     确认执行标准终止 (向目标发送 SIGTERM，超时升级为 SIGKILL)");
+        println!("  f / force     立即强制终止 (跳过宽限期，直接发送 SIGKILL)");
         println!("  p / protected 查看并管理当前已被保护的应用清单 (可移出白名单)");
         println!("  r / refresh   重新扫描系统前台应用");
         println!("  q / quit      取消并安全退出");
@@ -153,8 +153,8 @@ pub fn run_interactive_session(
                 }
             }
             "f" | "force" => {
-                if confirm_action(&format!("警告: 确认直接强制秒杀 (SIGKILL) 上述 {} 个应用?", target_list.len())) {
-                    println!("\n[开始执行强制清场]...");
+                if confirm_action(&format!("警告: 确认直接强制终止 (SIGKILL) 上述 {} 个应用?", target_list.len())) {
+                    println!("\n[开始执行强制终止]...");
                     let report = tiered_terminate(&target_list, grace_period, true);
                     render_execution_report(&report, false);
 
