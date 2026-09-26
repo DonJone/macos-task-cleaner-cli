@@ -3,12 +3,11 @@ mod preview;
 
 use std::env;
 use std::path::PathBuf;
-use std::process::Command;
 use std::time::{Duration, Instant};
 
 use interactive::run_interactive_session;
 use macos_task_cleaner_core::{
-    scan_foreground_apps, tiered_terminate, AppTarget, WhitelistManager,
+    scan_foreground_apps, terminate_with_mode, AppTarget, TerminationMode, WhitelistManager,
 };
 use preview::{render_dry_run_preview, render_execution_report};
 
@@ -243,7 +242,12 @@ fn main() {
                 });
             }
         }
-        let report = tiered_terminate(&targets_to_kill, grace_period, cli.force);
+        let mode = if cli.force {
+            TerminationMode::ForceImmediate
+        } else {
+            TerminationMode::Standard
+        };
+        let report = terminate_with_mode(&targets_to_kill, grace_period, mode);
         if cli.json {
             println!("{}", serde_json::to_string(&report).unwrap_or_default());
         } else {
@@ -315,24 +319,23 @@ fn main() {
         return;
     }
 
-    // 实质执行清场
-    let report = tiered_terminate(&target_list, grace_period, cli.force);
+    // 实质执行终止
+    let mode = if cli.force {
+        TerminationMode::ForceImmediate
+    } else if cli.purge {
+        TerminationMode::StandardWithPurge
+    } else {
+        TerminationMode::Standard
+    };
+    let report = terminate_with_mode(&target_list, grace_period, mode);
     render_execution_report(&report, cli.json);
 
-    // 可选内存整理 (--purge)
-    if cli.purge {
-        if !cli.json {
-            println!("\n[内存回收] 正在执行 /usr/sbin/purge 回收 inactive 页面...");
-        }
-        match Command::new("/usr/sbin/purge").status() {
-            Ok(status) => {
-                if !cli.json {
-                    println!("[内存回收完成] purge 退出码: {}", status);
-                }
-            }
-            Err(e) => {
-                eprintln!("[警告] 执行 /usr/sbin/purge 失败: {}", e);
-            }
+    // 可选内存整理反馈 (--purge)
+    if cli.purge && !cli.json {
+        if report.cache_purged {
+            println!("\n[内存回收完成] /usr/sbin/purge 缓存页面整理完成");
+        } else {
+            eprintln!("\n[警告] 执行 /usr/sbin/purge 失败或受权限限制");
         }
     }
 }

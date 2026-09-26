@@ -139,8 +139,8 @@ pub fn run_interactive_session(
                 continue;
             }
             "c" | "clean" => {
-                if confirm_action(&format!("确认平滑清场上述 {} 个应用?", target_list.len())) {
-                    println!("\n[开始执行清场]...");
+                if confirm_action(&format!("确认执行标准终止 (SIGTERM) 上述 {} 个应用?", target_list.len())) {
+                    println!("\n[开始执行标准终止]...");
                     let report = tiered_terminate(&target_list, grace_period, false);
                     render_execution_report(&report, false);
 
@@ -373,8 +373,8 @@ fn pause_prompt() {
 
 fn execute_purge() {
     println!("\n[内存回收] 正在执行 /usr/sbin/purge...");
-    match std::process::Command::new("/usr/sbin/purge").status() {
-        Ok(status) => println!("[内存回收完成] purge 退出码: {}", status),
-        Err(e) => eprintln!("[警告] 执行 purge 失败: {}", e),
+    match macos_task_cleaner_core::purge_system_cache() {
+        Ok(()) => println!("[内存回收完成] purge 缓存页面整理完成"),
+        Err(e) => eprintln!("[警告] 执行 /usr/sbin/purge 失败: {}", e),
     }
 }
