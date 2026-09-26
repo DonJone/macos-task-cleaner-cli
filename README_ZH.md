@@ -14,7 +14,7 @@
   <a href="COMMERCIAL.md"><img src="https://img.shields.io/badge/商业许可-可授权-orange" alt="商业许可: 可授权" /></a>
 </p>
 
-面向 macOS 的轻量级、工程级前台任务清场命令行工具。基于底层高性能核心引擎 [macos-task-cleaner-core](https://github.com/DonJone/macos-task-cleaner-core) 构建。
+面向 macOS 的轻量级、工程级前台任务清场命令行工具。基于底层高性能核心引擎 [macos-task-cleaner-core](https://github.com/macos-task-cleaner/macos-task-cleaner-core) 构建。
 
 ---
 
@@ -41,13 +41,13 @@
 
 ### 1. 预编译独立二进制包下载
 
-前往 [GitHub Releases](https://github.com/DonJone/macos-task-cleaner-cli/releases/latest) 直接获取适用于您当前 Mac 架构的压缩包：
+前往 [GitHub Releases](https://github.com/macos-task-cleaner/macos-task-cleaner-cli/releases/latest) 直接获取适用于您当前 Mac 架构的压缩包：
 
 | 硬件架构 | 适用设备 | 安装包直链下载 |
 | :--- | :--- | :--- |
-| **Apple Silicon** (`arm64`) | Apple M1 / M2 / M3 / M4 芯片 Mac | [mtc-macos-arm64.tar.gz](https://github.com/DonJone/macos-task-cleaner-cli/releases/latest/download/mtc-macos-arm64.tar.gz) |
-| **AMD64 / Intel** (`x86_64`) | Intel 处理器 / AMD64 架构 Mac | [mtc-macos-x86_64.tar.gz](https://github.com/DonJone/macos-task-cleaner-cli/releases/latest/download/mtc-macos-x86_64.tar.gz) |
-| **Universal** (`universal`) | 兼容全部 Apple Silicon 及 Intel Mac | [mtc-macos-universal.tar.gz](https://github.com/DonJone/macos-task-cleaner-cli/releases/latest/download/mtc-macos-universal.tar.gz) |
+| **Apple Silicon** (`arm64`) | Apple M1 / M2 / M3 / M4 芯片 Mac | [mtc-macos-arm64.tar.gz](https://github.com/macos-task-cleaner/macos-task-cleaner-cli/releases/latest/download/mtc-macos-arm64.tar.gz) |
+| **AMD64 / Intel** (`x86_64`) | Intel 处理器 / AMD64 架构 Mac | [mtc-macos-x86_64.tar.gz](https://github.com/macos-task-cleaner/macos-task-cleaner-cli/releases/latest/download/mtc-macos-x86_64.tar.gz) |
+| **Universal** (`universal`) | 兼容全部 Apple Silicon 及 Intel Mac | [mtc-macos-universal.tar.gz](https://github.com/macos-task-cleaner/macos-task-cleaner-cli/releases/latest/download/mtc-macos-universal.tar.gz) |
 
 解压后放置于 PATH 环境变量目录下即可使用：
 
@@ -61,7 +61,7 @@ sudo mv mtc /usr/local/bin/   # 或 ~/.local/bin/
 要求已安装 Rust 工具链（1.75+）：
 
 ```bash
-git clone https://github.com/DonJone/macos-task-cleaner-cli.git
+git clone https://github.com/macos-task-cleaner/macos-task-cleaner-cli.git
 cd macos-task-cleaner-cli
 
 # 编译 Release 二进制文件
@@ -185,8 +185,8 @@ names = [
 
 ## 关联项目
 
-* **核心算法与进程引擎库 (Rust)**：[macos-task-cleaner-core](https://github.com/DonJone/macos-task-cleaner-core)
-* **状态栏常驻客户端 (Swift)**：[macos-task-cleaner-gui](https://github.com/DonJone/macos-task-cleaner-gui)
+* **核心算法与进程引擎库 (Rust)**：[macos-task-cleaner-core](https://github.com/macos-task-cleaner/macos-task-cleaner-core)
+* **状态栏常驻客户端 (Swift)**：[macos-task-cleaner-gui](https://github.com/macos-task-cleaner/macos-task-cleaner-gui)
 
 ---
 

@@ -14,7 +14,7 @@
   <a href="COMMERCIAL.md"><img src="https://img.shields.io/badge/Commercial-License%20Available-orange" alt="Commercial License Available" /></a>
 </p>
 
-A lightweight, production-grade foreground task cleaner and process management CLI for macOS. Built on top of the high-precision [macos-task-cleaner-core](https://github.com/DonJone/macos-task-cleaner-core) engine.
+A lightweight, production-grade foreground task cleaner and process management CLI for macOS. Built on top of the high-precision [macos-task-cleaner-core](https://github.com/macos-task-cleaner/macos-task-cleaner-core) engine.
 
 ---
 
@@ -40,13 +40,13 @@ A lightweight, production-grade foreground task cleaner and process management C
 
 ### 1. Pre-Built Standalone Binaries
 
-Download the pre-compiled binary package directly from [GitHub Releases](https://github.com/DonJone/macos-task-cleaner-cli/releases/latest):
+Download the pre-compiled binary package directly from [GitHub Releases](https://github.com/macos-task-cleaner/macos-task-cleaner-cli/releases/latest):
 
 | Architecture | Applicable Hardware | Direct Download Link |
 | :--- | :--- | :--- |
-| **Apple Silicon** (`arm64`) | Apple M1 / M2 / M3 / M4 Macs | [mtc-macos-arm64.tar.gz](https://github.com/DonJone/macos-task-cleaner-cli/releases/latest/download/mtc-macos-arm64.tar.gz) |
-| **AMD64 / Intel** (`x86_64`) | Intel-based Macs | [mtc-macos-x86_64.tar.gz](https://github.com/DonJone/macos-task-cleaner-cli/releases/latest/download/mtc-macos-x86_64.tar.gz) |
-| **Universal** (`universal`) | Compatible with all Macs | [mtc-macos-universal.tar.gz](https://github.com/DonJone/macos-task-cleaner-cli/releases/latest/download/mtc-macos-universal.tar.gz) |
+| **Apple Silicon** (`arm64`) | Apple M1 / M2 / M3 / M4 Macs | [mtc-macos-arm64.tar.gz](https://github.com/macos-task-cleaner/macos-task-cleaner-cli/releases/latest/download/mtc-macos-arm64.tar.gz) |
+| **AMD64 / Intel** (`x86_64`) | Intel-based Macs | [mtc-macos-x86_64.tar.gz](https://github.com/macos-task-cleaner/macos-task-cleaner-cli/releases/latest/download/mtc-macos-x86_64.tar.gz) |
+| **Universal** (`universal`) | Compatible with all Macs | [mtc-macos-universal.tar.gz](https://github.com/macos-task-cleaner/macos-task-cleaner-cli/releases/latest/download/mtc-macos-universal.tar.gz) |
 
 Extract and place into your PATH:
 
@@ -60,7 +60,7 @@ sudo mv mtc /usr/local/bin/   # or ~/.local/bin/
 Requires Rust toolchain (1.75+):
 
 ```bash
-git clone https://github.com/DonJone/macos-task-cleaner-cli.git
+git clone https://github.com/macos-task-cleaner/macos-task-cleaner-cli.git
 cd macos-task-cleaner-cli
 
 # Build release binary
@@ -179,8 +179,8 @@ names = [
 
 ## Related Projects
 
-* **Core Engine Library (Rust)**: [macos-task-cleaner-core](https://github.com/DonJone/macos-task-cleaner-core)
-* **Native Menu Bar Application (Swift)**: [macos-task-cleaner-gui](https://github.com/DonJone/macos-task-cleaner-gui)
+* **Core Engine Library (Rust)**: [macos-task-cleaner-core](https://github.com/macos-task-cleaner/macos-task-cleaner-core)
+* **Native Menu Bar Application (Swift)**: [macos-task-cleaner-gui](https://github.com/macos-task-cleaner/macos-task-cleaner-gui)
 
 ---
 

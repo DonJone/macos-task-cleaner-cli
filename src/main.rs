@@ -164,7 +164,7 @@ fn main() {
         println!("Copyright (c) 2026 DonJone. All rights reserved.");
         println!("License: GNU Affero General Public License v3.0 (AGPLv3) / Commercial Dual License.");
         println!("Policy: See COMMERCIAL.md for commercial licensing and TRADEMARK.md for brand policy.");
-        println!("Homepage: https://github.com/DonJone/macos-task-cleaner-cli");
+        println!("Homepage: https://github.com/macos-task-cleaner/macos-task-cleaner-cli");
         return;
     }
 
