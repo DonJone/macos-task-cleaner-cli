@@ -8,7 +8,6 @@
   <a href="https://apple.com/macos"><img src="https://img.shields.io/badge/平台-macOS%2013%2B-000000?logo=apple&logoColor=white" alt="平台: macOS 13+" /></a>
   <img src="https://img.shields.io/badge/架构-Apple%20Silicon%20%7C%20AMD64-blue" alt="架构: Apple Silicon | AMD64" />
   <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/开发语言-Rust%201.75%2B-dea584?logo=rust&logoColor=white" alt="开发语言: Rust 1.75+" /></a>
-  <a href="https://brew.sh/"><img src="https://img.shields.io/badge/Homebrew-支持%20Tap%20安装-orange?logo=homebrew&logoColor=white" alt="Homebrew: 支持 Tap 安装" /></a>
   <img src="https://img.shields.io/badge/二进制格式-Universal%20Mach--O-purple" alt="格式: Universal Mach-O" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/开源协议-GNU%20AGPLv3-blue" alt="开源协议: GNU AGPLv3" /></a>
   <a href="COMMERCIAL.md"><img src="https://img.shields.io/badge/商业许可-可授权-orange" alt="商业许可: 可授权" /></a>
@@ -56,20 +55,7 @@
 
 ## 安装与下载
 
-### 方式一：通过 Homebrew 安装 (推荐)
-
-```bash
-# 添加官方 Tap 软件源
-brew tap macos-task-cleaner/tap
-
-# 安装独立命令行工具
-brew install mtc
-
-# 验证安装
-mtc --version
-```
-
-### 方式二：预编译独立二进制包下载
+### 方式一：预编译独立二进制包下载
 
 前往 [GitHub Releases](https://github.com/macos-task-cleaner/macos-task-cleaner-cli/releases/latest) 直接获取适用于您当前 Mac 架构的压缩包：
 

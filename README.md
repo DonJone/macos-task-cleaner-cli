@@ -8,7 +8,6 @@
   <a href="https://apple.com/macos"><img src="https://img.shields.io/badge/Platform-macOS%2013%2B-000000?logo=apple&logoColor=white" alt="Platform: macOS 13+" /></a>
   <img src="https://img.shields.io/badge/Architecture-Apple%20Silicon%20%7C%20AMD64-blue" alt="Architecture: Apple Silicon | AMD64" />
   <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Language-Rust%201.75%2B-dea584?logo=rust&logoColor=white" alt="Language: Rust 1.75+" /></a>
-  <a href="https://brew.sh/"><img src="https://img.shields.io/badge/Homebrew-Tap%20Available-orange?logo=homebrew&logoColor=white" alt="Homebrew: Tap Available" /></a>
   <img src="https://img.shields.io/badge/Binary-Universal%20Mach--O-purple" alt="Binary: Universal Mach-O" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GNU%20AGPLv3-blue" alt="License: GNU AGPLv3" /></a>
   <a href="COMMERCIAL.md"><img src="https://img.shields.io/badge/Commercial-License%20Available-orange" alt="Commercial License Available" /></a>
@@ -56,20 +55,7 @@ A lightweight, production-grade foreground task cleaner and process management C
 
 ## Installation
 
-### Option 1: Homebrew (Recommended)
-
-```bash
-# Add official tap repository
-brew tap macos-task-cleaner/tap
-
-# Install standalone CLI
-brew install mtc
-
-# Verify installation
-mtc --version
-```
-
-### Option 2: Pre-Built Standalone Binaries
+### Option 1: Pre-Built Standalone Binaries
 
 Download the pre-compiled binary package directly from [GitHub Releases](https://github.com/macos-task-cleaner/macos-task-cleaner-cli/releases/latest):
 
